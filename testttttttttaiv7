@@ -1,6 +1,5 @@
 import os, time, signal, random, threading, socket, requests, base64, asyncio, aiohttp
 import json, math
-import torch
 import numpy as np
 from aiohttp import ClientSession, TCPConnector, ClientTimeout
 from dataclasses import dataclass, field
@@ -309,18 +308,18 @@ class HackerUI:
         # Exit Panel
         console.print(Panel.fit("[bold green]Exit clean. Respect.[/bold green]", border_style="green"))
 
-                # ✅ Save Q-Table at the end of report
+        # ✅ Save Q-Table at the end of report
         save_qtable()
         console.print("[cyan][+] Q-Table saved to qtable.json[/cyan]")
 
-        # ✅ Response Clustering
-        if response_clusters:
-    		cl_table = Table(title="[bold magenta]Response Clustering[/bold magenta]", border_style="magenta")
-    		cl_table.add_column("Mode", style="cyan")
-    		cl_table.add_column("Cluster", style="yellow")
-    		for m, c in response_clusters.items():
-       	    cl_table.add_row(m, c)
-    		console.print(cl_table)
+	 # ✅ Response Clustering
+if response_clusters:
+    cl_table = Table(title="[bold magenta]Response Clustering[/bold magenta]", border_style="magenta")
+    cl_table.add_column("Mode", style="cyan")
+    cl_table.add_column("Cluster", style="yellow")
+    for m, c in response_clusters.items():
+        cl_table.add_row(m, c)
+    console.print(cl_table)
 
 
     # === Helper functions ===
@@ -527,7 +526,7 @@ def send_packet(ip, port, ui, delay_min, delay_max, proxies=None, target_url=Non
                                       timeout=3)
                     latency = time.time() - start
                     last_status = r.status_code
-                    adaptive_payload_q(ua, last_status, latency, proxy=proxy)
+                    adaptive_payload_q(ua, last_status, latency, proxy=proxy, response_text=r.text)
                     status_codes[r.status_code] = status_codes.get(r.status_code, 0) + 1
                     ui.tick_ok(f"HTTP/1.1 [{r.status_code}] via {proxy if proxy else 'DIRECT'} mode={mode}", send_size)
                 except Exception as e:
@@ -593,10 +592,10 @@ async def send_packet_async(ip, port, ui, delay_min, delay_max, proxies=None, ta
                                             headers={"User-Agent": ua},
                                             data=payload,
                                             proxy=proxy if proxy else None) as resp:
-                        await resp.read()
+                        body = await resp.text()
                         latency = time.time() - start
                         last_status = resp.status
-                        adaptive_payload_q(ua, last_status, latency, proxy=proxy)
+                        adaptive_payload_q(ua, last_status, latency, proxy=proxy, response_text=body)
                         status_codes[resp.status] = status_codes.get(resp.status, 0) + 1
                         ui.tick_ok(f"HTTP/2 via {proxy if proxy else 'DIRECT'} [{resp.status}] mode={mode}", send_size)
                         ui.set_attack_mode("HTTP2",
@@ -654,7 +653,7 @@ async def send_packet_http3(ip, port, ui, delay_min, delay_max, target_url=None)
                         if hasattr(ev, "headers"):
                             latency = time.time() - start
                             last_status = 200
-                            adaptive_payload_q(ua, last_status, latency)
+                            adaptive_payload_q(ua, last_status, latency, response_text=str(ev.headers))
                             ui.tick_ok(f"[{color}]HTTP/3 headers {ev.headers} mode={mode}[/]", send_size)
                             status_codes[200] = status_codes.get(200, 0) + 1
                             ui.set_attack_mode("HTTP3",
