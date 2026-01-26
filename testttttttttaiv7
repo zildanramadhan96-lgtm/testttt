@@ -430,13 +430,19 @@ def adaptive_payload_q(ua, last_status=None, latency=None, error_type=None, prox
     global current_mode, last_mode
 
     reward = 0
-    if last_status == 200: reward += 2
-    elif last_status: reward -= 1
-    if latency: reward -= latency
-    if error_type: reward -= 2
+    if last_status == 200:
+        reward += 2
+    elif last_status:
+        reward -= 1
+    if latency:
+        reward -= latency
+    if error_type:
+        reward -= 2
 
     # clustering respons kalau ada teks
     if response_text:
+        if isinstance(response_text, bytes):
+            response_text = response_text.decode(errors="ignore")
         cluster_response(current_mode, response_text)
 
     # update statistik
