@@ -487,25 +487,35 @@ def generate_payload(mode, ua):
 
     if mode == "hex":
         payload_body = "".join(random.choice("0123456789ABCDEF") for _ in range(random.randint(2048,8192)))
+
     elif mode == "json":
-        payload_body = '{"data":"%s"}' % ("X"*random.randint(1024,4096))
+        payload_body = '{"data":"%s"}' % ("X" * random.randint(1024,4096))
+
     elif mode == "header":
-        headers = [f"X-Custom-{random.randint(1000,9999)}: {''.join(random.choice('ABCDEF') for _ in range(64))}"
-                   for _ in range(random.randint(5,20))]
+        headers = [
+            str(f"X-Custom-{random.randint(1000,9999)}: {''.join(random.choice('ABCDEF') for _ in range(64))}")
+            for _ in range(random.randint(5,20))
+        ]
         payload_body = "\r\n".join(headers)
+
     elif mode == "mutate":
         raw = "".join(random.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") for _ in range(random.randint(4096,8192)))
         payload_body = base64.b64encode(raw.encode()).decode()
-    elif mode == "mixed":
-        headers = [f"X-Mixed-{random.randint(1000,9999)}: {''.join(random.choice('ABCDEF') for _ in range(32))}"
-                   for _ in range(random.randint(3,10))]
-        json_part = '{"mix":"%s"}' % ("Y"*random.randint(512,2048))
-        hex_part = "".join(random.choice("0123456789ABCDEF") for _ in range(random.randint(1024,4096)))
-        payload_body = "\r\n".join(headers)+"\r\n"+json_part+"\r\n"+hex_part
-    else:  # plain
-        payload_body = "A"*random.randint(2048,8192)
 
-    payload = (f"User-Agent: {ua}\r\nX-Mode: {mode}\r\n"+payload_body).encode()
+    elif mode == "mixed":
+        headers = [
+            str(f"X-Mixed-{random.randint(1000,9999)}: {''.join(random.choice('ABCDEF') for _ in range(32))}")
+            for _ in range(random.randint(3,10))
+        ]
+        json_part = '{"mix":"%s"}' % ("Y" * random.randint(512,2048))
+        hex_part = "".join(random.choice("0123456789ABCDEF") for _ in range(random.randint(1024,4096)))
+        payload_body = "\r\n".join(headers) + "\r\n" + json_part + "\r\n" + hex_part
+
+    else:  # plain
+        payload_body = "A" * random.randint(2048,8192)
+
+    # final payload: encode ke bytes untuk dikirim ke server
+    payload = (f"User-Agent: {ua}\r\nX-Mode: {mode}\r\n" + payload_body).encode()
     return payload, len(payload), mode
     
 # === HTTP/1.1 mode + TCP/UDP fallback ===
